@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Póker Manager</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: 15px; background: #f4f7f6; color: #333; }
+        .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
+        .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+        button { padding: 10px 15px; border-radius: 8px; border: none; background: #2980b9; color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
+        .btn-borrar { background: #e74c3c; padding: 4px 8px; font-size: 0.8em; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; /* Evita zoom en iPhone */ }
+        .chip { display: inline-block; background: #dfe6e9; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
+        .pozo-info { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #b8daff; font-weight: bold; text-align: center; }
+        .ronda-card { background: #ffffff; border: 2px solid #3498db; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .ronda-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px; }
+        #resultadoFinal { line-height: 1.5; font-size: 0.95em; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="caja">
+        <h2>1. Jugadores</h2>
+        <div class="flex-row">
+            <input type="text" id="nuevoJugador" placeholder="Nombre...">
+            <button onclick="agregarJugador()">Añadir</button>
+        </div>
+        <div id="listaJugadores"></div>
+    </div>
+
+    <div class="caja">
+        <h2>2. Fondo (Cena y Pozo)</h2>
+        <div class="flex-row">
+            <select id="tipoMovimiento" onchange="adaptarForm()">
+                <option value="gasto">Gasto Cena</option>
+                <option value="apuesta_general">Apuesta General</option>
+                <option value="apuesta_unica">Apuesta Única</option>
+            </select>
+            <div id="capPersona"><select id="selectPersona"></select></div>
+            <input type="number" id="monto" placeholder="€">
+            <button onclick="registrar()" style="background: #27ae60;">Registrar</button>
+        </div>
+        <div class="pozo-info">
+            💰 Pozo: <span id="uiPozoTotal">0</span>€ | 
+            Disponible: <span id="uiPozoDisp">0</span>€
+        </div>
+    </div>
+
+    <div class="caja">
+        <h2>3. Rondas de Premios</h2>
+        <div class="flex-row" style="background: #f0f2f5; padding: 12px; border-radius: 10px;">
+            <input type="number" id="inputMontoRonda" placeholder="Monto Partida €" style="flex:1">
+            <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir Ronda</button>
+        </div>
+        <div id="contenedorRondas" style="margin-top: 15px;"></div>
+    </div>
+
+    <div class="caja" style="background: #2c3e50; color: white;">
+        <button onclick="ejecutarLiquidacion()" style="width: 100%; background: #f1c40f; color: black; padding: 15px; font-weight: bold; border-radius: 10px; font-size: 1.1em;">LIQUIDAR CUENTAS</button>
+        <div id="resultadoFinal"></div>
+    </div>
+
+    <script>
+        let jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+        let movimientos = []; 
+        let rondas = []; 
+
+        window.onload = () => actualizarTodo();
+
+        function agregarJugador() {
+            const input = document.getElementById('nuevoJugador');
+            const nom = input.value.trim();
+            if (nom && !jugadores.includes(nom)) {
+                jugadores.push(nom);
+                jugadores.sort();
+                input.value = "";
+                actualizarTodo();
+            }
+        }
+
+        function adaptarForm() {
+            const tipo = document.getElementById('tipoMovimiento').value;
+            document.getElementById('capPersona').style.display = (tipo === 'apuesta_general') ? 'none' : 'block';
+        }
+
+        function registrar() {
+            const tipo = document.getElementById('tipoMovimiento').value;
+            const monto = parseFloat(document.getElementById('monto').value);
+            if (isNaN(monto)) return;
+
+            if (tipo === 'apuesta_general') {
+                jugadores.forEach(j => movimientos.push({ id: Math.random(), tipo: 'apuesta', nombre: j, monto: monto }));
+            } else {
+                movimientos.push({ id: Date.now(), tipo: tipo === 'gasto' ? 'gasto' : 'apuesta', nombre: document.getElementById('selectPersona').value, monto: monto });
+            }
+            document.getElementById('monto').value = "";
+            actualizarTodo();
+        }
+
+        function crearRonda() {
+            const monto = parseFloat(document.getElementById('inputMontoRonda').value);
+            const totalPozo = movimientos.filter(m => m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
+            const yaAsignado = rondas.reduce((s, r) => s + r.montoTotal, 0);
+
+            if (isNaN(monto) || monto <= 0) return alert("Monto no válido");
+            if (yaAsignado + monto > totalPozo + 0.01) return alert("No hay suficiente dinero en el Pozo");
+
+            rondas.push({ id: Date.now(), montoTotal: monto, ganadores: [] });
+            document.getElementById('inputMontoRonda').value = "";
+            actualizarTodo();
+        }
+
+        function asignarGanadorARonda(rondaId) {
+            const ronda = rondas.find(r => r.id === rondaId);
+            const sel = document.getElementById(`sel-${rondaId}`);
+            const porc = parseFloat(document.getElementById(`porc-${rondaId}`).value);
+            const sumaActual = ronda.ganadores.reduce((s, g) => s + g.p, 0);
+
+            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Porcentaje excedido");
+
+            ronda.ganadores.push({ nombre: sel.value, p: porc, euros: (ronda.montoTotal * porc / 100) });
+            actualizarTodo();
+        }
+
+        function borrarRonda(id) {
+            rondas = rondas.filter(r => r.id !== id);
+            actualizarTodo();
+        }
+
+        function actualizarTodo() {
+            document.getElementById('listaJugadores').innerHTML = jugadores.map(j => `<span class="chip">${j}</span>`).join('');
+            const selPersona = document.getElementById('selectPersona');
+            const valPrevio = selPersona.value;
+            selPersona.innerHTML = jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
+            if (jugadores.includes(valPrevio)) selPersona.value = valPrevio;
+
+            let tG = 0, tP = 0;
+            movimientos.forEach(m => { if (m.tipo === 'gasto') tG += m.monto; else tP += m.monto; });
+            const yaAsignadoRondas = rondas.reduce((s, r) => s + r.montoTotal, 0);
+            
+            document.getElementById('uiPozoTotal').innerText = tP.toFixed(2);
+            document.getElementById('uiPozoDisp').innerText = (tP - yaAsignadoRondas).toFixed(2);
+
+            const contenedor = document.getElementById('contenedorRondas');
+            contenedor.innerHTML = rondas.map(r => {
+                const porcRepartido = r.ganadores.reduce((s, g) => s + g.p, 0);
+                return `
+                <div class="ronda-card">
+                    <div class="ronda-header"><strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong><button class="btn-borrar" onclick="borrarRonda(${r.id})">X</button></div>
+                    <div class="flex-row">
+                        <select id="sel-${r.id}">${jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
+                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
+                        <button onclick="asignarGanadorARonda(${r.id})" style="background: #27ae60;">OK</button>
+                    </div>
+                    <div class="lista-interna">${r.ganadores.map(g => `<div>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</div>`).join('')}</div>
+                    <small style="color: ${porcRepartido === 100 ? 'green' : 'orange'}">${porcRepartido === 100 ? 'Completada' : 'Pendiente: '+(100-porcRepartido)+'%'}</small>
+                </div>`;
+            }).join('');
+        }
+
+        function ejecutarLiquidacion() {
+            const tG = movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+            const tP = movimientos.filter(m => m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
+            const cuota = tG / jugadores.length;
+            const res = document.getElementById('resultadoFinal');
+            
+            res.innerHTML = `<hr><h3>Resultado</h3><p>Cena p/p: ${cuota.toFixed(2)}€</p><hr>`;
+            let deudores = [], acreedores = [];
+
+            jugadores.forEach(j => {
+                const pusoG = movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+                let ganado = 0;
+                rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
+                const balCena = pusoG - cuota;
+                res.innerHTML += `<p>${j}: 💰+${ganado.toFixed(2)}€ | 🍽️ ${balCena >= 0 ? '+' : ''}${balCena.toFixed(2)}€</p>`;
+                const total = balCena; 
+                if (total < -0.01) deudores.push({n: j, m: Math.abs(total)});
+                else if (total > 0.01) acreedores.push({n: j, m: total});
+            });
+
+            res.innerHTML += "<hr><h4>Pagos Cena:</h4>";
+            let i = 0, j = 0;
+            while(i < deudores.length && j < acreedores.length) {
+                let m = Math.min(deudores[i].m, acreedores[j].m);
+                res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${acreedores[j].n}</b></p>`;
+                deudores[i].m -= m; acreedoresCena = acreedores[j].m -= m;
+                if (deudores[i].m < 0.01) i++; if (acreedores[j].m < 0.01) j++;
+            }
+        }
+    </script>
+</body>
+</html>
