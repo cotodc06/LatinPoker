@@ -15,9 +15,9 @@
         .chip { display: inline-block; background: #dfe6e9; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
         .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .ronda-card { background: #ffffff; border: 2px solid #3498db; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        .ronda-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px; }
-        .lista-interna { margin: 10px 0; padding-left: 0; list-style: none; font-size: 0.9em; }
-        #resultadoFinal { line-height: 1.5; font-size: 0.95em; }
+        .lista-historial { list-style: none; padding: 0; font-size: 0.85em; }
+        .lista-historial li { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        #resultadoFinal { line-height: 1.5; font-size: 0.95em; margin-top: 15px; }
         hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
     </style>
 </head>
@@ -41,13 +41,15 @@
                 <option value="apuesta_unica">Apuesta Única</option>
             </select>
             <div id="capPersona"><select id="selectPersona"></select></div>
-            <input type="number" id="monto" placeholder="Monto €">
+            <input type="number" id="monto" placeholder="€">
             <button onclick="registrar()" style="background: #27ae60;">Registrar</button>
         </div>
         <div class="pozo-info">
-            💰 Pozo Total: <span id="uiPozoTotal">0</span>€ | 
-            <b>Disponible: <span id="uiPozoDisp">0</span>€</b>
+            💰 Pozo: <span id="uiPozoTotal">0</span>€ | 
+            <b>Disp: <span id="uiPozoDisp">0</span>€</b> | 
+            Cena: <span id="uiGastos">0</span>€
         </div>
+        <ul id="listaHistorial" class="lista-historial"></ul>
     </div>
 
     <div class="caja">
@@ -93,11 +95,21 @@
             if (isNaN(monto)) return;
 
             if (tipo === 'apuesta_general') {
-                jugadores.forEach(j => movimientos.push({ id: Math.random(), tipo: 'apuesta', nombre: j, monto: monto }));
+                const batchId = Date.now();
+                jugadores.forEach(j => movimientos.push({ id: Math.random(), batchId: batchId, tipo: 'apuesta', nombre: j, monto: monto, desc: 'Apuesta Gral' }));
             } else {
-                movimientos.push({ id: Date.now(), tipo: tipo === 'gasto' ? 'gasto' : 'apuesta', nombre: document.getElementById('selectPersona').value, monto: monto });
+                movimientos.push({ id: Date.now(), tipo: tipo === 'gasto' ? 'gasto' : 'apuesta', nombre: document.getElementById('selectPersona').value, monto: monto, desc: tipo.toUpperCase() });
             }
             document.getElementById('monto').value = "";
+            actualizarTodo();
+        }
+
+        function borrarMovimiento(id, batchId) {
+            if (batchId) {
+                movimientos = movimientos.filter(m => m.batchId !== batchId);
+            } else {
+                movimientos = movimientos.filter(m => m.id !== id);
+            }
             actualizarTodo();
         }
 
@@ -107,7 +119,7 @@
             const yaAsignado = rondas.reduce((s, r) => s + r.montoTotal, 0);
 
             if (isNaN(monto) || monto <= 0) return alert("Monto no válido");
-            if (yaAsignado + monto > totalPozo + 0.01) return alert("Saldo insuficiente en el Pozo");
+            if (yaAsignado + monto > totalPozo + 0.01) return alert("Saldo insuficiente");
 
             rondas.push({ id: Date.now(), montoTotal: monto, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
@@ -120,7 +132,7 @@
             const porc = parseFloat(document.getElementById(`porc-${rondaId}`).value);
             const sumaActual = ronda.ganadores.reduce((s, g) => s + g.p, 0);
 
-            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Porcentaje inválido o excede el 100%");
+            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Error en %");
 
             ronda.ganadores.push({ nombre: sel.value, p: porc, euros: (ronda.montoTotal * porc / 100) });
             actualizarTodo();
@@ -139,25 +151,34 @@
             if (jugadores.includes(valPrevio)) selPersona.value = valPrevio;
 
             let tG = 0, tP = 0;
-            movimientos.forEach(m => { if (m.tipo === 'gasto') tG += m.monto; else tP += m.monto; });
+            const historialUI = document.getElementById('listaHistorial');
+            historialUI.innerHTML = "";
+
+            movimientos.forEach(m => { 
+                if (m.tipo === 'gasto') tG += m.monto; else tP += m.monto;
+                historialUI.innerHTML += `<li>
+                    <span>${m.nombre}: ${m.monto.toFixed(2)}€ (${m.desc || m.tipo})</span>
+                    <button class="btn-borrar" onclick="borrarMovimiento(${m.id}, ${m.batchId || 'null'})">X</button>
+                </li>`;
+            });
+
             const yaAsignadoRondas = rondas.reduce((s, r) => s + r.montoTotal, 0);
-            
             document.getElementById('uiPozoTotal').innerText = tP.toFixed(2);
             document.getElementById('uiPozoDisp').innerText = (tP - yaAsignadoRondas).toFixed(2);
+            document.getElementById('uiGastos').innerText = tG.toFixed(2);
 
             const contenedor = document.getElementById('contenedorRondas');
             contenedor.innerHTML = rondas.map(r => {
                 const porcRepartido = r.ganadores.reduce((s, g) => s + g.p, 0);
                 return `
                 <div class="ronda-card">
-                    <div class="ronda-header"><strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong><button class="btn-borrar" onclick="borrarRonda(${r.id})">Eliminar</button></div>
+                    <div class="ronda-header"><strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong><button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar</button></div>
                     <div class="flex-row">
                         <select id="sel-${r.id}">${jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 60px;">
+                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
                         <button onclick="asignarGanadorARonda(${r.id})" style="background: #27ae60;">OK</button>
                     </div>
-                    <ul class="lista-interna">${r.ganadores.map(g => `<li>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</li>`).join('')}</ul>
-                    <small style="color: ${porcRepartido === 100 ? 'green' : 'orange'}">${porcRepartido === 100 ? '✅ Completada' : 'Falta: '+(100-porcRepartido)+'%'}</small>
+                    <ul style="list-style:none; padding:0; font-size:0.9em;">${r.ganadores.map(g => `<li>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</li>`).join('')}</ul>
                 </div>`;
             }).join('');
         }
@@ -168,7 +189,7 @@
             const cuota = tG / jugadores.length;
             const res = document.getElementById('resultadoFinal');
             
-            res.innerHTML = `<hr><h3>Resultado</h3><p>Cena p/p: ${cuota.toFixed(2)}€</p><hr>`;
+            res.innerHTML = `<hr><h3>Resultado Final</h3><p>Cena p/p: ${cuota.toFixed(2)}€</p><hr>`;
             let deudores = [], acreedores = [];
 
             jugadores.forEach(j => {
@@ -181,7 +202,7 @@
                 else if (balCena > 0.01) acreedores.push({n: j, m: balCena});
             });
 
-            res.innerHTML += "<hr><h4>Pagos Cena:</h4>";
+            res.innerHTML += "<hr><h4>Transferencias:</h4>";
             let i = 0, j = 0;
             while(i < deudores.length && j < acreedores.length) {
                 let m = Math.min(deudores[i].m, acreedores[j].m);
