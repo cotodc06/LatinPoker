@@ -38,18 +38,19 @@
         <h2>2. Fondo - Latin Poker</h2>
         <div class="flex-row">
             <select id="tipoMovimiento" onchange="adaptarForm()">
-                <option value="gasto">Gasto Cena</option>
+                <option value="gasto">Gasto</option>
                 <option value="apuesta_general">Apuesta General</option>
                 <option value="apuesta_unica">Apuesta Única</option>
             </select>
             <div id="capPersona"><select id="selectPersona"></select></div>
             <input type="number" id="monto" placeholder="€">
+            <input type="text" id="descGasto" placeholder="Descripción (ej: Pizza)">
             <button onclick="registrar()" style="background: #27ae60;">Registrar</button>
         </div>
         <div class="pozo-info">
             💰 Pozo: <span id="uiPozoTotal">0</span>€ | 
             <b>Disp: <span id="uiPozoDisp">0</span>€</b> | 
-            Cena: <span id="uiGastos">0</span>€
+            Gastos: <span id="uiGastos">0</span>€
         </div>
         <ul id="listaHistorial" class="lista-historial"></ul>
     </div>
@@ -95,7 +96,7 @@
         }
 
         function resetearPartida() {
-            if (confirm("¿Seguro que quieres borrar todos los movimientos y rondas? (Los jugadores se mantienen)")) {
+            if (confirm("¿Seguro que quieres borrar todos los movimientos y rondas?")) {
                 movimientos = [];
                 rondas = [];
                 guardarDatos();
@@ -117,11 +118,13 @@
         function adaptarForm() {
             const tipo = document.getElementById('tipoMovimiento').value;
             document.getElementById('capPersona').style.display = (tipo === 'apuesta_general') ? 'none' : 'block';
+            document.getElementById('descGasto').style.display = (tipo === 'apuesta_general') ? 'none' : 'block';
         }
 
         function registrar() {
             const tipo = document.getElementById('tipoMovimiento').value;
             const monto = parseFloat(document.getElementById('monto').value);
+            const desc = document.getElementById('descGasto').value.trim();
             if (isNaN(monto)) return;
 
             if (tipo === 'apuesta_general') {
@@ -143,10 +146,11 @@
                     tipo: tipo === 'gasto' ? 'gasto' : 'apuesta', 
                     nombre: persona, 
                     monto: monto, 
-                    detalle: tipo === 'gasto' ? 'Cena' : 'Apuesta Única' 
+                    detalle: desc || (tipo === 'gasto' ? 'Gasto' : 'Apuesta Única') 
                 });
             }
             document.getElementById('monto').value = "";
+            document.getElementById('descGasto').value = "";
             actualizarTodo();
         }
 
@@ -165,7 +169,7 @@
             const yaAsignado = rondas.reduce((s, r) => s + r.montoTotal, 0);
 
             if (isNaN(monto) || monto <= 0) return alert("Monto no válido");
-            if (yaAsignado + monto > totalPozo + 0.01) return alert("Saldo insuficiente en el pozo");
+            if (yaAsignado + monto > totalPozo + 0.01) return alert("Saldo insuficiente");
 
             rondas.push({ id: Date.now(), montoTotal: monto, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
@@ -178,7 +182,7 @@
             const porc = parseFloat(document.getElementById(`porc-${rondaId}`).value);
             const sumaActual = ronda.ganadores.reduce((s, g) => s + g.p, 0);
 
-            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("El porcentaje excede el 100%");
+            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Excede 100%");
 
             ronda.ganadores.push({ nombre: sel.value, p: porc, euros: (ronda.montoTotal * porc / 100) });
             actualizarTodo();
@@ -222,7 +226,7 @@
                 <div class="ronda-card">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                         <strong>RONDA: ${r.montoTotal.toFixed(2)}€</strong>
-                        <button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar Ronda</button>
+                        <button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar</button>
                     </div>
                     <div class="flex-row">
                         <select id="sel-${r.id}">${jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
@@ -239,27 +243,39 @@
         function ejecutarLiquidacion() {
             const tG = movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
             const tP = movimientos.filter(m => m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
+            if (jugadores.length === 0) return;
             const cuota = tG / jugadores.length;
             const res = document.getElementById('resultadoFinal');
             
-            res.innerHTML = `<hr><h3>Resultado de la noche</h3><p>Cena p/p: ${cuota.toFixed(2)}€</p><hr>`;
+            res.innerHTML = `<hr><h3>Resultado Final</h3><p>Gasto p/p: ${cuota.toFixed(2)}€</p><hr>`;
             let deudores = [], acreedores = [];
 
             jugadores.forEach(j => {
                 const pusoG = movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
                 let ganado = 0;
                 rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
-                const balCena = pusoG - cuota;
-                res.innerHTML += `<p>${j}: 💰+${ganado.toFixed(2)}€ | 🍽️ ${balCena >= 0 ? '+' : ''}${balCena.toFixed(2)}€</p>`;
-                if (balCena < -0.01) deudores.push({n: j, m: Math.abs(balCena)});
-                else if (balCena > 0.01) acreedores.push({n: j, m: balCena});
+                const balGasto = pusoG - cuota;
+                
+                res.innerHTML += `<p>${j}: 💰 Premios <b>+${ganado.toFixed(2)}€</b> | 🍽️ Gasto <b>${balGasto >= 0 ? '+' : ''}${balGasto.toFixed(2)}€</b></p>`;
+                
+                if (balGasto < -0.01) deudores.push({n: j, m: Math.abs(balGasto)});
+                else if (balGasto > 0.01) acreedores.push({n: j, m: balGasto});
             });
 
-            res.innerHTML += "<hr><h4>Ajustes de Cena (Transferencias):</h4>";
+            res.innerHTML += "<hr><h4>1. Cobros del Pozo (Efectivo en mesa):</h4>";
+            jugadores.forEach(j => {
+                let ganado = 0;
+                rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
+                if (ganado > 0.01) {
+                    res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${ganado.toFixed(2)}€</b> del montón físico.</p>`;
+                }
+            });
+
+            res.innerHTML += "<hr><h4>2. Transferencias por Gastos:</h4>";
             let i = 0, j = 0;
             while(i < deudores.length && j < acreedores.length) {
                 let m = Math.min(deudores[i].m, acreedores[j].m);
-                res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${acreedores[j].n}</b></p>`;
+                res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> le transfiere <b>${m.toFixed(2)}€</b> a <b>${acreedores[j].n}</b></p>`;
                 deudores[i].m -= m; acreedores[j].m -= m;
                 if (deudores[i].m < 0.01) i++; if (acreedores[j].m < 0.01) j++;
             }
