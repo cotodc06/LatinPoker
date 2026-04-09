@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Póker Manager</title>
+    <title>Latin Poker</title>
     <style>
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -11,11 +11,12 @@
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
         button { padding: 10px 15px; border-radius: 8px; border: none; background: #2980b9; color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
         .btn-borrar { background: #e74c3c; padding: 4px 8px; font-size: 0.8em; }
-        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; /* Evita zoom en iPhone */ }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
         .chip { display: inline-block; background: #dfe6e9; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
-        .pozo-info { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #b8daff; font-weight: bold; text-align: center; }
+        .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .ronda-card { background: #ffffff; border: 2px solid #3498db; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         .ronda-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px; }
+        .lista-interna { margin: 10px 0; padding-left: 0; list-style: none; font-size: 0.9em; }
         #resultadoFinal { line-height: 1.5; font-size: 0.95em; }
         hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
     </style>
@@ -32,7 +33,7 @@
     </div>
 
     <div class="caja">
-        <h2>2. Fondo (Cena y Pozo)</h2>
+        <h2>2. Fondo - Latin Poker</h2>
         <div class="flex-row">
             <select id="tipoMovimiento" onchange="adaptarForm()">
                 <option value="gasto">Gasto Cena</option>
@@ -40,22 +41,22 @@
                 <option value="apuesta_unica">Apuesta Única</option>
             </select>
             <div id="capPersona"><select id="selectPersona"></select></div>
-            <input type="number" id="monto" placeholder="€">
+            <input type="number" id="monto" placeholder="Monto €">
             <button onclick="registrar()" style="background: #27ae60;">Registrar</button>
         </div>
         <div class="pozo-info">
-            💰 Pozo: <span id="uiPozoTotal">0</span>€ | 
-            Disponible: <span id="uiPozoDisp">0</span>€
+            💰 Pozo Total: <span id="uiPozoTotal">0</span>€ | 
+            <b>Disponible: <span id="uiPozoDisp">0</span>€</b>
         </div>
     </div>
 
     <div class="caja">
         <h2>3. Rondas de Premios</h2>
         <div class="flex-row" style="background: #f0f2f5; padding: 12px; border-radius: 10px;">
-            <input type="number" id="inputMontoRonda" placeholder="Monto Partida €" style="flex:1">
+            <input type="number" id="inputMontoRonda" placeholder="Monto Ronda €" style="flex:1">
             <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir Ronda</button>
         </div>
-        <div id="contenedorRondas" style="margin-top: 15px;"></div>
+        <div id="contenedorRondas" style="margin-top: 20px;"></div>
     </div>
 
     <div class="caja" style="background: #2c3e50; color: white;">
@@ -106,7 +107,7 @@
             const yaAsignado = rondas.reduce((s, r) => s + r.montoTotal, 0);
 
             if (isNaN(monto) || monto <= 0) return alert("Monto no válido");
-            if (yaAsignado + monto > totalPozo + 0.01) return alert("No hay suficiente dinero en el Pozo");
+            if (yaAsignado + monto > totalPozo + 0.01) return alert("Saldo insuficiente en el Pozo");
 
             rondas.push({ id: Date.now(), montoTotal: monto, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
@@ -119,7 +120,7 @@
             const porc = parseFloat(document.getElementById(`porc-${rondaId}`).value);
             const sumaActual = ronda.ganadores.reduce((s, g) => s + g.p, 0);
 
-            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Porcentaje excedido");
+            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Porcentaje inválido o excede el 100%");
 
             ronda.ganadores.push({ nombre: sel.value, p: porc, euros: (ronda.montoTotal * porc / 100) });
             actualizarTodo();
@@ -149,14 +150,14 @@
                 const porcRepartido = r.ganadores.reduce((s, g) => s + g.p, 0);
                 return `
                 <div class="ronda-card">
-                    <div class="ronda-header"><strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong><button class="btn-borrar" onclick="borrarRonda(${r.id})">X</button></div>
+                    <div class="ronda-header"><strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong><button class="btn-borrar" onclick="borrarRonda(${r.id})">Eliminar</button></div>
                     <div class="flex-row">
                         <select id="sel-${r.id}">${jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
+                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 60px;">
                         <button onclick="asignarGanadorARonda(${r.id})" style="background: #27ae60;">OK</button>
                     </div>
-                    <div class="lista-interna">${r.ganadores.map(g => `<div>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</div>`).join('')}</div>
-                    <small style="color: ${porcRepartido === 100 ? 'green' : 'orange'}">${porcRepartido === 100 ? 'Completada' : 'Pendiente: '+(100-porcRepartido)+'%'}</small>
+                    <ul class="lista-interna">${r.ganadores.map(g => `<li>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</li>`).join('')}</ul>
+                    <small style="color: ${porcRepartido === 100 ? 'green' : 'orange'}">${porcRepartido === 100 ? '✅ Completada' : 'Falta: '+(100-porcRepartido)+'%'}</small>
                 </div>`;
             }).join('');
         }
@@ -176,9 +177,8 @@
                 rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
                 const balCena = pusoG - cuota;
                 res.innerHTML += `<p>${j}: 💰+${ganado.toFixed(2)}€ | 🍽️ ${balCena >= 0 ? '+' : ''}${balCena.toFixed(2)}€</p>`;
-                const total = balCena; 
-                if (total < -0.01) deudores.push({n: j, m: Math.abs(total)});
-                else if (total > 0.01) acreedores.push({n: j, m: total});
+                if (balCena < -0.01) deudores.push({n: j, m: Math.abs(balCena)});
+                else if (balCena > 0.01) acreedores.push({n: j, m: balCena});
             });
 
             res.innerHTML += "<hr><h4>Pagos Cena:</h4>";
@@ -186,7 +186,7 @@
             while(i < deudores.length && j < acreedores.length) {
                 let m = Math.min(deudores[i].m, acreedores[j].m);
                 res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${acreedores[j].n}</b></p>`;
-                deudores[i].m -= m; acreedoresCena = acreedores[j].m -= m;
+                deudores[i].m -= m; acreedores[j].m -= m;
                 if (deudores[i].m < 0.01) i++; if (acreedores[j].m < 0.01) j++;
             }
         }
