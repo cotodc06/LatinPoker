@@ -2,22 +2,36 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Latin Poker">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1055/1055823.png">
+
     <title>Latin Poker</title>
     <style>
-        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: 15px; background: #f4f7f6; color: #333; }
+        /* Ajuste para que el contenido no choque con la notch del iPhone en modo App */
+        body { 
+            font-family: -apple-system, sans-serif; 
+            max-width: 800px; 
+            margin: auto; 
+            padding: env(safe-area-inset-top) 15px 15px 15px; 
+            background: #f4f7f6; 
+            color: #333; 
+        }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
-        button { padding: 10px 15px; border-radius: 8px; border: none; background: #2980b9; color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
+        button { padding: 12px 15px; border-radius: 8px; border: none; background: #2980b9; color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
         .btn-borrar { background: #e74c3c; padding: 4px 8px; font-size: 0.8em; }
         .btn-reset { background: #95a5a6; margin-top: 15px; font-size: 0.8em; width: 100%; }
-        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; }
         .chip { display: inline-block; background: #dfe6e9; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
         .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .ronda-card { background: #ffffff; border: 2px solid #3498db; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         .lista-historial { list-style: none; padding: 0; font-size: 0.85em; max-height: 200px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 8px; }
-        .lista-historial li { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .lista-historial li { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
         #resultadoFinal { line-height: 1.5; font-size: 0.95em; margin-top: 15px; }
         hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
@@ -43,9 +57,9 @@
                 <option value="apuesta_unica">Apuesta Única</option>
             </select>
             <div id="capPersona"><select id="selectPersona"></select></div>
-            <input type="number" id="monto" placeholder="€">
-            <input type="text" id="descGasto" placeholder="Descripción (ej: Pizza)">
-            <button onclick="registrar()" style="background: #27ae60;">Registrar</button>
+            <input type="number" id="monto" placeholder="€" style="width: 80px;">
+            <input type="text" id="descGasto" placeholder="¿Qué es?">
+            <button onclick="registrar()" style="background: #27ae60;">OK</button>
         </div>
         <div class="pozo-info">
             💰 Pozo: <span id="uiPozoTotal">0</span>€ | 
@@ -56,12 +70,12 @@
     </div>
 
     <div class="caja">
-        <h2>3. Rondas de Premios</h2>
+        <h2>3. Rondas</h2>
         <div class="flex-row" style="background: #f0f2f5; padding: 12px; border-radius: 10px;">
-            <input type="number" id="inputMontoRonda" placeholder="Monto Ronda €" style="flex:1">
-            <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir Ronda</button>
+            <input type="number" id="inputMontoRonda" placeholder="Monto €" style="flex:1">
+            <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir</button>
         </div>
-        <div id="contenedorRondas" style="margin-top: 20px;"></div>
+        <div id="contenedorRondas" style="margin-top: 15px;"></div>
     </div>
 
     <div class="caja" style="background: #2c3e50; color: white;">
@@ -75,209 +89,127 @@
         let movimientos = []; 
         let rondas = []; 
 
-        window.onload = () => {
-            cargarDatos();
-            actualizarTodo();
-        };
+        window.onload = () => { cargarDatos(); actualizarTodo(); };
 
-        function guardarDatos() {
-            const datos = { jugadores, movimientos, rondas };
-            localStorage.setItem('latinPokerData', JSON.stringify(datos));
-        }
-
+        function guardarDatos() { localStorage.setItem('latinPokerData', JSON.stringify({ jugadores, movimientos, rondas })); }
         function cargarDatos() {
-            const guardado = localStorage.getItem('latinPokerData');
-            if (guardado) {
-                const data = JSON.parse(guardado);
-                jugadores = data.jugadores || jugadores;
-                movimientos = data.movimientos || [];
-                rondas = data.rondas || [];
-            }
+            const g = localStorage.getItem('latinPokerData');
+            if (g) { const d = JSON.parse(g); jugadores = d.jugadores || jugadores; movimientos = d.movimientos || []; rondas = d.rondas || []; }
         }
 
         function resetearPartida() {
-            if (confirm("¿Seguro que quieres borrar todos los movimientos y rondas?")) {
-                movimientos = [];
-                rondas = [];
-                guardarDatos();
-                location.reload();
-            }
+            if (confirm("¿Borrar movimientos y rondas?")) { movimientos = []; rondas = []; guardarDatos(); location.reload(); }
         }
 
         function agregarJugador() {
-            const input = document.getElementById('nuevoJugador');
-            const nom = input.value.trim();
-            if (nom && !jugadores.includes(nom)) {
-                jugadores.push(nom);
-                jugadores.sort();
-                input.value = "";
-                actualizarTodo();
-            }
+            const i = document.getElementById('nuevoJugador');
+            const n = i.value.trim();
+            if (n && !jugadores.includes(n)) { jugadores.push(n); jugadores.sort(); i.value = ""; actualizarTodo(); }
         }
 
         function adaptarForm() {
-            const tipo = document.getElementById('tipoMovimiento').value;
-            document.getElementById('capPersona').style.display = (tipo === 'apuesta_general') ? 'none' : 'block';
-            document.getElementById('descGasto').style.display = (tipo === 'apuesta_general') ? 'none' : 'block';
+            const t = document.getElementById('tipoMovimiento').value;
+            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
+            document.getElementById('descGasto').style.display = (t === 'apuesta_general') ? 'none' : 'block';
         }
 
         function registrar() {
-            const tipo = document.getElementById('tipoMovimiento').value;
-            const monto = parseFloat(document.getElementById('monto').value);
-            const desc = document.getElementById('descGasto').value.trim();
-            if (isNaN(monto)) return;
+            const t = document.getElementById('tipoMovimiento').value;
+            const m = parseFloat(document.getElementById('monto').value);
+            const d = document.getElementById('descGasto').value.trim();
+            if (isNaN(m)) return;
 
-            if (tipo === 'apuesta_general') {
-                const batchId = Date.now();
-                jugadores.forEach(j => {
-                    movimientos.push({ 
-                        id: Math.random(), 
-                        batchId: batchId, 
-                        tipo: 'apuesta', 
-                        nombre: j, 
-                        monto: monto, 
-                        detalle: 'Apuesta Gral' 
-                    });
-                });
+            if (t === 'apuesta_general') {
+                const b = Date.now();
+                jugadores.forEach(j => movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Gral' }));
             } else {
-                const persona = document.getElementById('selectPersona').value;
-                movimientos.push({ 
-                    id: Date.now(), 
-                    tipo: tipo === 'gasto' ? 'gasto' : 'apuesta', 
-                    nombre: persona, 
-                    monto: monto, 
-                    detalle: desc || (tipo === 'gasto' ? 'Gasto' : 'Apuesta Única') 
-                });
+                const p = document.getElementById('selectPersona').value;
+                movimientos.push({ id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', nombre: p, monto: m, detalle: d || (t==='gasto'?'Gasto':'Única') });
             }
-            document.getElementById('monto').value = "";
-            document.getElementById('descGasto').value = "";
+            document.getElementById('monto').value = ""; document.getElementById('descGasto').value = "";
             actualizarTodo();
         }
 
-        function borrarMovimiento(id, batchId) {
-            if (batchId) {
-                movimientos = movimientos.filter(m => m.batchId !== batchId);
-            } else {
-                movimientos = movimientos.filter(m => m.id !== id);
-            }
+        function borrarMovimiento(id, b) {
+            movimientos = b ? movimientos.filter(m => m.batchId !== b) : movimientos.filter(m => m.id !== id);
             actualizarTodo();
         }
 
         function crearRonda() {
-            const monto = parseFloat(document.getElementById('inputMontoRonda').value);
-            const totalPozo = movimientos.filter(m => m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
-            const yaAsignado = rondas.reduce((s, r) => s + r.montoTotal, 0);
-
-            if (isNaN(monto) || monto <= 0) return alert("Monto no válido");
-            if (yaAsignado + monto > totalPozo + 0.01) return alert("Saldo insuficiente");
-
-            rondas.push({ id: Date.now(), montoTotal: monto, ganadores: [] });
+            const m = parseFloat(document.getElementById('inputMontoRonda').value);
+            const p = movimientos.filter(x => x.tipo === 'apuesta').reduce((s, x) => s + x.monto, 0);
+            const a = rondas.reduce((s, x) => s + x.montoTotal, 0);
+            if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Error en monto o pozo insuficiente");
+            rondas.push({ id: Date.now(), montoTotal: m, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
             actualizarTodo();
         }
 
-        function asignarGanadorARonda(rondaId) {
-            const ronda = rondas.find(r => r.id === rondaId);
-            const sel = document.getElementById(`sel-${rondaId}`);
-            const porc = parseFloat(document.getElementById(`porc-${rondaId}`).value);
-            const sumaActual = ronda.ganadores.reduce((s, g) => s + g.p, 0);
-
-            if (isNaN(porc) || (sumaActual + porc > 100)) return alert("Excede 100%");
-
-            ronda.ganadores.push({ nombre: sel.value, p: porc, euros: (ronda.montoTotal * porc / 100) });
+        function asignarGanadorARonda(rid) {
+            const r = rondas.find(x => x.id === rid);
+            const p = parseFloat(document.getElementById(`porc-${rid}`).value);
+            const s = r.ganadores.reduce((x, g) => x + g.p, 0);
+            if (isNaN(p) || (s + p > 100)) return alert("Excede 100%");
+            r.ganadores.push({ nombre: document.getElementById(`sel-${rid}`).value, p: p, euros: (r.montoTotal * p / 100) });
             actualizarTodo();
         }
 
-        function borrarRonda(id) {
-            rondas = rondas.filter(r => r.id !== id);
-            actualizarTodo();
-        }
+        function borrarRonda(id) { rondas = rondas.filter(x => x.id !== id); actualizarTodo(); }
 
         function actualizarTodo() {
             guardarDatos();
             document.getElementById('listaJugadores').innerHTML = jugadores.map(j => `<span class="chip">${j}</span>`).join('');
-            
-            const selPersona = document.getElementById('selectPersona');
-            const valPrevio = selPersona.value;
-            selPersona.innerHTML = jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
-            if (jugadores.includes(valPrevio)) selPersona.value = valPrevio;
+            const selP = document.getElementById('selectPersona');
+            const prev = selP.value;
+            selP.innerHTML = jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
+            if (jugadores.includes(prev)) selP.value = prev;
 
-            let tG = 0, tP = 0;
-            const historialUI = document.getElementById('listaHistorial');
-            historialUI.innerHTML = "";
-
+            let tg = 0, tp = 0;
+            const hUI = document.getElementById('listaHistorial');
+            hUI.innerHTML = "";
             movimientos.forEach(m => { 
-                if (m.tipo === 'gasto') tG += m.monto; else tP += m.monto;
-                historialUI.innerHTML += `<li>
-                    <span><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span></span>
-                    <button class="btn-borrar" onclick="borrarMovimiento(${m.id}, ${m.batchId || 'null'})">X</button>
-                </li>`;
+                if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
+                hUI.innerHTML += `<li><span><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span></span><button class="btn-borrar" onclick="borrarMovimiento(${m.id}, ${m.batchId || 'null'})">X</button></li>`;
             });
 
-            const yaAsignadoRondas = rondas.reduce((s, r) => s + r.montoTotal, 0);
-            document.getElementById('uiPozoTotal').innerText = tP.toFixed(2);
-            document.getElementById('uiPozoDisp').innerText = (tP - yaAsignadoRondas).toFixed(2);
-            document.getElementById('uiGastos').innerText = tG.toFixed(2);
+            const yaR = rondas.reduce((s, r) => s + r.montoTotal, 0);
+            document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
+            document.getElementById('uiPozoDisp').innerText = (tp - yaR).toFixed(2);
+            document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
-            const contenedor = document.getElementById('contenedorRondas');
-            contenedor.innerHTML = rondas.map(r => {
-                const porcRepartido = r.ganadores.reduce((s, g) => s + g.p, 0);
-                return `
+            document.getElementById('contenedorRondas').innerHTML = rondas.map(r => `
                 <div class="ronda-card">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <strong>RONDA: ${r.montoTotal.toFixed(2)}€</strong>
-                        <button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar</button>
-                    </div>
-                    <div class="flex-row">
-                        <select id="sel-${r.id}">${jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
-                        <button onclick="asignarGanadorARonda(${r.id})" style="background: #27ae60;">OK</button>
-                    </div>
-                    <ul style="list-style:none; padding:0; font-size:0.9em; margin-top:10px;">
-                        ${r.ganadores.map(g => `<li>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</li>`).join('')}
-                    </ul>
-                </div>`;
-            }).join('');
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong><button class="btn-borrar" onclick="borrarRonda(${r.id})">X</button></div>
+                    <div class="flex-row"><select id="sel-${r.id}">${jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select><input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;"><button onclick="asignarGanadorARonda(${r.id})" style="background: #27ae60;">OK</button></div>
+                    <ul style="list-style:none; padding:0; font-size:0.9em; margin-top:8px;">${r.ganadores.map(g => `<li>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</li>`).join('')}</ul>
+                </div>`).join('');
         }
 
         function ejecutarLiquidacion() {
-            const tG = movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-            const tP = movimientos.filter(m => m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
+            const tg = movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
             if (jugadores.length === 0) return;
-            const cuota = tG / jugadores.length;
+            const c = tg / jugadores.length;
             const res = document.getElementById('resultadoFinal');
-            
-            res.innerHTML = `<hr><h3>Resultado Final</h3><p>Gasto p/p: ${cuota.toFixed(2)}€</p><hr>`;
-            let deudores = [], acreedores = [];
-
+            res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
+            let d = [], a = [];
             jugadores.forEach(j => {
-                const pusoG = movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-                let ganado = 0;
-                rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
-                const balGasto = pusoG - cuota;
-                
-                res.innerHTML += `<p>${j}: 💰 Premios <b>+${ganado.toFixed(2)}€</b> | 🍽️ Gasto <b>${balGasto >= 0 ? '+' : ''}${balGasto.toFixed(2)}€</b></p>`;
-                
-                if (balGasto < -0.01) deudores.push({n: j, m: Math.abs(balGasto)});
-                else if (balGasto > 0.01) acreedores.push({n: j, m: balGasto});
+                const pg = movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+                let g = 0; rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
+                const bal = pg - c;
+                res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
+                if (bal < -0.01) d.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) a.push({n: j, m: bal});
             });
-
-            res.innerHTML += "<hr><h4>1. Cobros del Pozo (Efectivo en mesa):</h4>";
+            res.innerHTML += "<hr><h4>1. Retiros del Pozo Físico:</h4>";
             jugadores.forEach(j => {
-                let ganado = 0;
-                rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
-                if (ganado > 0.01) {
-                    res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${ganado.toFixed(2)}€</b> del montón físico.</p>`;
-                }
+                let g = 0; rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
+                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b>.</p>`;
             });
-
-            res.innerHTML += "<hr><h4>2. Transferencias por Gastos:</h4>";
-            let i = 0, j = 0;
-            while(i < deudores.length && j < acreedores.length) {
-                let m = Math.min(deudores[i].m, acreedores[j].m);
-                res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> le transfiere <b>${m.toFixed(2)}€</b> a <b>${acreedores[j].n}</b></p>`;
-                deudores[i].m -= m; acreedores[j].m -= m;
-                if (deudores[i].m < 0.01) i++; if (acreedores[j].m < 0.01) j++;
+            res.innerHTML += "<hr><h4>2. Pagos de Gastos:</h4>";
+            let i = 0, k = 0;
+            while(i < d.length && k < a.length) {
+                let m = Math.min(d[i].m, a[k].m);
+                res.innerHTML += `<p>💸 <b>${d[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a[k].n}</b></p>`;
+                d[i].m -= m; a[k].m -= m; if (d[i].m < 0.01) i++; if (a[k].m < 0.01) k++;
             }
         }
     </script>
