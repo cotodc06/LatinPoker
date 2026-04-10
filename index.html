@@ -14,10 +14,11 @@
         h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
         button { padding: 12px 15px; border-radius: 8px; border: none; background: #2980b9; color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
-        .btn-borrar { background: #e74c3c; padding: 4px 8px; font-size: 0.8em; }
+        .btn-borrar { background: #e74c3c; padding: 4px 8px; font-size: 0.8em; border-radius: 4px; }
         .btn-reset { background: #95a5a6; margin-top: 15px; font-size: 0.8em; width: 100%; }
         input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; }
-        .chip { display: inline-block; background: #dfe6e9; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
+        .chip { display: inline-flex; align-items: center; background: #dfe6e9; padding: 6px 10px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
+        .chip-delete { margin-left: 8px; color: #e74c3c; font-weight: bold; cursor: pointer; border-left: 1px solid #bdc3c7; padding-left: 8px; }
         .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .ronda-card { background: #ffffff; border: 2px solid #3498db; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         .lista-historial { list-style: none; padding: 0; font-size: 0.85em; max-height: 200px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 8px; }
@@ -75,15 +76,15 @@
     </div>
 
     <script>
-        const JUGADORES_DEFAULT = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
-        let jugadores = [...JUGADORES_DEFAULT];
+        const JUGADORES_ORIGINALES = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+        let jugadores = [];
         let movimientos = []; 
         let rondas = []; 
 
         window.onload = () => { 
             cargarDatos(); 
             actualizarTodo(); 
-            adaptarForm(); // Asegura que la descripción aparezca/desaparezca al cargar
+            adaptarForm();
         };
 
         function guardarDatos() { localStorage.setItem('latinPokerData', JSON.stringify({ jugadores, movimientos, rondas })); }
@@ -92,17 +93,21 @@
             const g = localStorage.getItem('latinPokerData');
             if (g) { 
                 const d = JSON.parse(g); 
-                if (d.jugadores && d.jugadores.length > 0) jugadores = d.jugadores; 
+                jugadores = d.jugadores || [...JUGADORES_ORIGINALES]; 
                 movimientos = d.movimientos || []; 
                 rondas = d.rondas || []; 
+            } else {
+                jugadores = [...JUGADORES_ORIGINALES];
             }
         }
 
         function resetearPartida() {
-            if (confirm("¿Borrar movimientos y rondas? (Los jugadores se mantienen)")) { 
+            if (confirm("¿Borrar todo y volver a los 7 jugadores originales?")) { 
+                localStorage.removeItem('latinPokerData');
+                jugadores = [...JUGADORES_ORIGINALES];
                 movimientos = []; 
                 rondas = []; 
-                guardarDatos(); 
+                actualizarTodo();
                 location.reload(); 
             }
         }
@@ -113,9 +118,15 @@
             if (n && !jugadores.includes(n)) { jugadores.push(n); jugadores.sort(); i.value = ""; actualizarTodo(); }
         }
 
+        function quitarJugador(nombre) {
+            if (confirm(`¿Quitar a ${nombre} de la lista?`)) {
+                jugadores = jugadores.filter(j => j !== nombre);
+                actualizarTodo();
+            }
+        }
+
         function adaptarForm() {
             const t = document.getElementById('tipoMovimiento').value;
-            // Solo mostramos descripción para Gasto y Apuesta Única
             const mostrarDesc = (t === 'gasto' || t === 'apuesta_unica');
             document.getElementById('descGasto').style.display = mostrarDesc ? 'block' : 'none';
             document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
@@ -132,16 +143,9 @@
                 jugadores.forEach(j => movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Gral' }));
             } else {
                 const p = document.getElementById('selectPersona').value;
-                movimientos.push({ 
-                    id: Date.now(), 
-                    tipo: t === 'gasto' ? 'gasto' : 'apuesta', 
-                    nombre: p, 
-                    monto: m, 
-                    detalle: d || (t === 'gasto' ? 'Gasto' : 'Única') 
-                });
+                movimientos.push({ id: Date.now(), tipo: t === 'gasto' ? 'gasto' : 'apuesta', nombre: p, monto: m, detalle: d || (t === 'gasto' ? 'Gasto' : 'Única') });
             }
-            document.getElementById('monto').value = ""; 
-            document.getElementById('descGasto').value = "";
+            document.getElementById('monto').value = ""; document.getElementById('descGasto').value = "";
             actualizarTodo();
         }
 
@@ -173,7 +177,10 @@
 
         function actualizarTodo() {
             guardarDatos();
-            document.getElementById('listaJugadores').innerHTML = jugadores.map(j => `<span class="chip">${j}</span>`).join('');
+            document.getElementById('listaJugadores').innerHTML = jugadores.map(j => `
+                <span class="chip">${j}<span class="chip-delete" onclick="quitarJugador('${j}')">×</span></span>
+            `).join('');
+            
             const selP = document.getElementById('selectPersona');
             const prev = selP.value;
             selP.innerHTML = jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
@@ -217,7 +224,7 @@
             res.innerHTML += "<hr><h4>1. Retiros del Pozo Físico:</h4>";
             jugadores.forEach(j => {
                 let g = 0; rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
-                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b> del montón físico.</p>`;
+                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b> del pozo físico.</p>`;
             });
             res.innerHTML += "<hr><h4>2. Transferencias de Gastos:</h4>";
             let i = 0, k = 0;
