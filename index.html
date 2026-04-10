@@ -2,21 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Latin Poker">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1055/1055823.png">
+    
+    <link rel="apple-touch-icon" href="icono.png">
 
     <title>Latin Poker</title>
     <style>
-        /* Ajuste para que el contenido no choque con la notch del iPhone en modo App */
+        /* Ajuste para que el contenido no choque con el notch del iPhone en modo App */
         body { 
             font-family: -apple-system, sans-serif; 
             max-width: 800px; 
             margin: auto; 
-            padding: env(safe-area-inset-top) 15px 15px 15px; 
+            padding: env(safe-area-inset-top) 15px calc(env(safe-area-inset-bottom) + 15px) 15px; 
             background: #f4f7f6; 
             color: #333; 
         }
@@ -197,7 +198,7 @@
                 let g = 0; rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
                 const bal = pg - c;
                 res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
-                if (bal < -0.01) d.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) a.push({n: j, m: bal});
+                if (bal < -0.01) d.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) a.push({n: j, m: bal!});
             });
             res.innerHTML += "<hr><h4>1. Retiros del Pozo Físico:</h4>";
             jugadores.forEach(j => {
