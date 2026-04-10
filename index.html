@@ -3,24 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Latin Poker">
-    
     <link rel="apple-touch-icon" href="icono.png">
-
     <title>Latin Poker</title>
     <style>
-        /* Ajuste para que el contenido no choque con el notch del iPhone en modo App */
-        body { 
-            font-family: -apple-system, sans-serif; 
-            max-width: 800px; 
-            margin: auto; 
-            padding: env(safe-area-inset-top) 15px calc(env(safe-area-inset-bottom) + 15px) 15px; 
-            background: #f4f7f6; 
-            color: #333; 
-        }
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
@@ -50,7 +39,7 @@
     </div>
 
     <div class="caja">
-        <h2>2. Fondo - Latin Poker</h2>
+        <h2>2. Ingresos</h2>
         <div class="flex-row">
             <select id="tipoMovimiento" onchange="adaptarForm()">
                 <option value="gasto">Gasto</option>
@@ -86,20 +75,36 @@
     </div>
 
     <script>
-        let jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+        const JUGADORES_DEFAULT = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+        let jugadores = [...JUGADORES_DEFAULT];
         let movimientos = []; 
         let rondas = []; 
 
-        window.onload = () => { cargarDatos(); actualizarTodo(); };
+        window.onload = () => { 
+            cargarDatos(); 
+            actualizarTodo(); 
+            adaptarForm(); // Asegura que la descripción aparezca/desaparezca al cargar
+        };
 
         function guardarDatos() { localStorage.setItem('latinPokerData', JSON.stringify({ jugadores, movimientos, rondas })); }
+        
         function cargarDatos() {
             const g = localStorage.getItem('latinPokerData');
-            if (g) { const d = JSON.parse(g); jugadores = d.jugadores || jugadores; movimientos = d.movimientos || []; rondas = d.rondas || []; }
+            if (g) { 
+                const d = JSON.parse(g); 
+                if (d.jugadores && d.jugadores.length > 0) jugadores = d.jugadores; 
+                movimientos = d.movimientos || []; 
+                rondas = d.rondas || []; 
+            }
         }
 
         function resetearPartida() {
-            if (confirm("¿Borrar movimientos y rondas?")) { movimientos = []; rondas = []; guardarDatos(); location.reload(); }
+            if (confirm("¿Borrar movimientos y rondas? (Los jugadores se mantienen)")) { 
+                movimientos = []; 
+                rondas = []; 
+                guardarDatos(); 
+                location.reload(); 
+            }
         }
 
         function agregarJugador() {
@@ -110,8 +115,10 @@
 
         function adaptarForm() {
             const t = document.getElementById('tipoMovimiento').value;
+            // Solo mostramos descripción para Gasto y Apuesta Única
+            const mostrarDesc = (t === 'gasto' || t === 'apuesta_unica');
+            document.getElementById('descGasto').style.display = mostrarDesc ? 'block' : 'none';
             document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
-            document.getElementById('descGasto').style.display = (t === 'apuesta_general') ? 'none' : 'block';
         }
 
         function registrar() {
@@ -125,9 +132,16 @@
                 jugadores.forEach(j => movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Gral' }));
             } else {
                 const p = document.getElementById('selectPersona').value;
-                movimientos.push({ id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', nombre: p, monto: m, detalle: d || (t==='gasto'?'Gasto':'Única') });
+                movimientos.push({ 
+                    id: Date.now(), 
+                    tipo: t === 'gasto' ? 'gasto' : 'apuesta', 
+                    nombre: p, 
+                    monto: m, 
+                    detalle: d || (t === 'gasto' ? 'Gasto' : 'Única') 
+                });
             }
-            document.getElementById('monto').value = ""; document.getElementById('descGasto').value = "";
+            document.getElementById('monto').value = ""; 
+            document.getElementById('descGasto').value = "";
             actualizarTodo();
         }
 
@@ -191,21 +205,21 @@
             if (jugadores.length === 0) return;
             const c = tg / jugadores.length;
             const res = document.getElementById('resultadoFinal');
-            res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
+            res.innerHTML = `<hr><h3>Liquidación Final</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
             let d = [], a = [];
             jugadores.forEach(j => {
                 const pg = movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
                 let g = 0; rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
                 const bal = pg - c;
-                res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
-                if (bal < -0.01) d.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) a.push({n: j, m: bal!});
+                res.innerHTML += `<p>${j}: 💰 Premios <b>+${g.toFixed(2)}€</b> | 🍽️ Gasto <b>${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</b></p>`;
+                if (bal < -0.01) d.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) a.push({n: j, m: bal});
             });
             res.innerHTML += "<hr><h4>1. Retiros del Pozo Físico:</h4>";
             jugadores.forEach(j => {
                 let g = 0; rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
-                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b>.</p>`;
+                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b> del montón físico.</p>`;
             });
-            res.innerHTML += "<hr><h4>2. Pagos de Gastos:</h4>";
+            res.innerHTML += "<hr><h4>2. Transferencias de Gastos:</h4>";
             let i = 0, k = 0;
             while(i < d.length && k < a.length) {
                 let m = Math.min(d[i].m, a[k].m);
