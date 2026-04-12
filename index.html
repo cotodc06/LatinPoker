@@ -3,38 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <link rel="icon" type="image/png" href="icono.png">
-    <link rel="apple-touch-icon" href="icono.png">
-    <link rel="shortcut icon" href="icono.png">
-    <meta property="og:image" content="icono.png">
-
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Latin Poker Cloud</title>
+    <title>Latin Poker Cloud V2.18</title>
     <style>
-        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --gold: #f1c40f; --heart: #e84393; }
+        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --gold: #f1c40f; }
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
+        
+        /* Estilos Tabla Leaderboard */
+        .tabla-rank { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+        .tabla-rank th { text-align: left; padding: 10px 5px; color: #7f8c8d; font-size: 0.8em; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid #eee; }
+        .tabla-rank th:hover { color: var(--primary); }
+        .tabla-rank td { padding: 12px 5px; border-bottom: 1px solid #f9f9f9; }
+        .tabla-rank tr:last-child td { border-bottom: none; }
+        .col-val { font-weight: bold; text-align: right; }
+        .active-sort { color: var(--primary) !important; text-decoration: underline; }
+        .medalla { font-size: 1.2em; margin-right: 5px; }
+        
+        /* Resto de Estilos V2.13 */
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
         button { padding: 12px 15px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
         input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; }
         .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .chip { display: inline-flex; align-items: center; background: #dfe6e9; padding: 6px 10px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
-        .btn-quitar-jugador { margin-left: 8px; cursor: pointer; color: var(--danger); font-weight: bold; font-size: 1.2em; border: none; background: none; padding: 0 4px; }
         .hidden { display: none !important; }
         #loginOverlay { position: fixed; inset: 0; background: var(--dark); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-        .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
-        .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; }
+        .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; border: none; }
         .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
-        
-        /* Ranking Bars */
-        .rank-item { margin-bottom: 8px; }
-        .rank-info { display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
-        .rank-bar-bg { background: #eee; border-radius: 10px; height: 10px; width: 100%; overflow: hidden; }
-        .rank-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease-out; }
     </style>
 </head>
 <body>
@@ -61,11 +57,19 @@
             <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Conectado</span>
         </div>
 
-        <div class="caja" id="cajaStats">
-            <h2>🏆 El Ganador Más Querido (Rondas)</h2>
-            <div id="contenedorQuerido"></div>
-            <h2 style="margin-top:20px;">💸 El Ganador Menos Querido (Efectivo)</h2>
-            <div id="contenedorMenosQuerido"></div>
+        <div class="caja" id="cajaRanking">
+            <h2>🏆 LEADERBOARD</h2>
+            <table class="tabla-rank">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">Pos</th>
+                        <th style="width: 40%;">Jugador</th>
+                        <th id="sortRondas" onclick="cambiarOrden('rondas')" class="active-sort" style="text-align: right;">Rondas ❤️</th>
+                        <th id="sortDinero" onclick="cambiarOrden('dinero')" style="text-align: right;">Efectivo 💰</th>
+                    </tr>
+                </thead>
+                <tbody id="bodyRanking"></tbody>
+            </table>
         </div>
 
         <div class="caja">
@@ -123,6 +127,7 @@
         const FIXED_BIN_ID = '69db9d49856a6821892677fe';
 
         let currentUser = "";
+        let currentSort = "rondas"; // Orden por defecto
         let db = { actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] }, historial: [] };
 
         window.onload = async () => {
@@ -142,45 +147,44 @@
 
         async function intentarLogin() {
             const user = document.getElementById('loginUser').value;
-            const pass = document.getElementById('loginPass').value;
-            if (pass === PASS_GRUPO) await entrarApp(user);
+            if (document.getElementById('loginPass').value === PASS_GRUPO) await entrarApp(user);
             else alert("Clave incorrecta");
         }
 
         async function sincronizar() {
             const ind = document.getElementById('syncIndicator');
-            ind.innerText = "⌛ Sincronizando...";
+            ind.innerText = "⌛...";
             try {
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}/latest?t=${Date.now()}`, { 
                     headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
-                if (data.record) {
-                    db = data.record;
-                    actualizarTodo(false);
-                }
-            } catch (e) { console.error("Error sync", e); }
+                if (data.record) { db = data.record; actualizarTodo(false); }
+            } catch (e) { console.error("Error sync"); }
             ind.innerText = "☁️ Conectado";
         }
 
         async function pushCloud() {
-            const ind = document.getElementById('syncIndicator');
-            ind.innerText = "⌛ Guardando...";
             try {
                 await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                     body: JSON.stringify(db)
                 });
-            } catch (e) { console.error("Error push", e); }
-            ind.innerText = "☁️ Conectado";
+            } catch (e) { console.error("Error push"); }
+        }
+
+        function cambiarOrden(tipo) {
+            currentSort = tipo;
+            document.getElementById('sortRondas').classList.toggle('active-sort', tipo === 'rondas');
+            document.getElementById('sortDinero').classList.toggle('active-sort', tipo === 'dinero');
+            actualizarTodo(false);
         }
 
         function adaptarForm() {
             const t = document.getElementById('tipoMovimiento').value;
-            const show = (t === 'gasto' || t === 'reenganche');
-            document.getElementById('descGasto').style.display = show ? 'block' : 'none';
             document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
+            document.getElementById('descGasto').style.display = (t === 'gasto' || t === 'reenganche') ? 'block' : 'none';
         }
 
         function registrar() {
@@ -188,16 +192,11 @@
             const m = parseFloat(document.getElementById('monto').value);
             const d = document.getElementById('descGasto').value.trim();
             if (isNaN(m)) return;
-
             if (t === 'apuesta_general') {
                 const b = Date.now();
                 db.actual.jugadores.forEach(j => db.actual.movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Apuesta General' }));
             } else {
-                db.actual.movimientos.push({ 
-                    id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', 
-                    nombre: document.getElementById('selectPersona').value, 
-                    monto: m, detalle: d || (t==='gasto'?'Gasto':'Reenganche') 
-                });
+                db.actual.movimientos.push({ id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', nombre: document.getElementById('selectPersona').value, monto: m, detalle: d || (t==='gasto'?'Gasto':'Reenganche') });
             }
             document.getElementById('monto').value = ""; document.getElementById('descGasto').value = "";
             actualizarTodo(true);
@@ -225,117 +224,69 @@
             actualizarTodo(true);
         }
 
-        function borrarRonda(id) {
-            db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
-            actualizarTodo(true);
-        }
-
-        function quitarJugador(nombre) {
-            if (!confirm(`¿Quitar a ${nombre}?`)) return;
-            db.actual.jugadores = db.actual.jugadores.filter(j => j !== nombre);
-            actualizarTodo(true);
-        }
-
         function cerrarPartida() {
-            if (!confirm("¿Archivar noche definitivamente?")) return;
-            ejecutarLiquidacion(); 
-            const resHTML = document.getElementById('resultadoFinal').innerHTML;
-            db.historial.push({ fecha: new Date().toLocaleString(), datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: resHTML });
+            if (!confirm("¿Archivar noche?")) return;
+            ejecutarLiquidacion();
+            db.historial.push({ fecha: new Date().toLocaleString(), datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: document.getElementById('resultadoFinal').innerHTML });
             db.actual.movimientos = []; db.actual.rondas = [];
             db.actual.jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
-            document.getElementById('resultadoFinal').innerHTML = "";
-            document.getElementById('btnCerrarPartida').style.display = "none";
             actualizarTodo(true);
-        }
-
-        function borrarDeHistorial(index) {
-            if (confirm("¿Borrar esta noche del historial permanentemente?")) {
-                db.historial.splice(db.historial.length - 1 - index, 1);
-                actualizarTodo(true);
-            }
         }
 
         function actualizarTodo(save = false) {
             const act = db.actual;
-            document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `
-                <span class="chip">${j}${currentUser === 'Fer' ? `<button class="btn-quitar-jugador" onclick="quitarJugador('${j}')">×</button>` : ''}</span>
-            `).join('');
-            
+            document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `<span class="chip">${j}${currentUser==='Fer'?`<button style="border:none; background:none; color:red; margin-left:5px;" onclick="quitarJugador('${j}')">×</button>`:''}</span>`).join('');
             document.getElementById('selectPersona').innerHTML = act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
             
             let tg = 0, tp = 0;
-            const hUI = document.getElementById('listaHistorial'); hUI.innerHTML = "";
-            act.movimientos.forEach(m => {
-                if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
-                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
-                    ${currentUser === 'Fer' ? `<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id}, ${m.batchId || 0})">X</button>` : ''}</li>`;
-            });
-
+            act.movimientos.forEach(m => { if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto; });
             document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
-            // RANKINGS HISTÓRICOS
-            const dinero = {}, victorias = {};
-            const todos = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
-            todos.forEach(t => { dinero[t] = 0; victorias[t] = 0; });
+            // CÁLCULO LEADERBOARD
+            const stats = {};
+            const jugadoresBase = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+            jugadoresBase.forEach(j => stats[j] = { rondas: 0, dinero: 0 });
 
             db.historial.forEach(n => {
                 if (n.datos && n.datos.rondas) {
                     n.datos.rondas.forEach(r => {
                         let maxP = 0;
                         r.ganadores.forEach(g => { 
-                            if(dinero[g.nombre] !== undefined) dinero[g.nombre] += g.euros;
+                            if(stats[g.nombre]) stats[g.nombre].dinero += g.euros;
                             if(g.p > maxP) maxP = g.p;
                         });
                         const ganadoresMax = r.ganadores.filter(g => g.p === maxP);
-                        ganadoresMax.forEach(g => { if(victorias[g.nombre] !== undefined) victorias[g.nombre] += (1 / ganadoresMax.length); });
+                        ganadoresMax.forEach(g => { if(stats[g.nombre]) stats[g.nombre].rondas += (1 / ganadoresMax.length); });
                     });
                 }
             });
 
-            const renderRank = (data, color, contId, suffix) => {
-                const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]);
-                const max = sorted[0][1] || 1;
-                document.getElementById(contId).innerHTML = sorted.map(([n,v]) => `
-                    <div class="rank-item">
-                        <div class="rank-info"><span>${n}</span><span>${v.toFixed(2)}${suffix}</span></div>
-                        <div class="rank-bar-bg"><div class="rank-bar-fill" style="background:${color}; width:${(v/max*100)}%"></div></div>
-                    </div>`).join('');
-            };
+            const sorted = Object.entries(stats).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
+            const body = document.getElementById('bodyRanking');
+            body.innerHTML = sorted.map(([nombre, val], i) => {
+                let medal = i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : "";
+                return `<tr>
+                    <td>${i+1}</td>
+                    <td>${medal}<b>${nombre}</b></td>
+                    <td class="col-val">${val.rondas.toFixed(1)}</td>
+                    <td class="col-val">${val.dinero.toFixed(2)}€</td>
+                </tr>`;
+            }).join('');
 
-            if (db.historial.length > 0) {
-                document.getElementById('cajaStats').style.display = "block";
-                renderRank(victorias, 'var(--heart)', 'contenedorQuerido', ' pts');
-                renderRank(dinero, 'var(--gold)', 'contenedorMenosQuerido', '€');
-            } else {
-                document.getElementById('cajaStats').style.display = "none";
-            }
-
-            document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, index) => `
+            // Resto de UI
+            document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, i) => `
                 <div class="ronda-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>RONDA ${index + 1}: ${r.montoTotal.toFixed(2)}€</strong>
-                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar</button>` : ''}
-                    </div>
-                    <div class="flex-row">
-                        <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 55px;">
-                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
-                    </div>
-                    <ul style="padding:0; list-style:none; font-size:0.9em;">
-                        ${r.ganadores.map(g => `<li>• ${g.nombre}: <b>${g.euros.toFixed(2)}€</b></li>`).join('')}
-                    </ul>
+                    <strong>RONDA ${i+1}: ${r.montoTotal}€</strong>
+                    <div class="flex-row"><select id="sel-${r.id}">${act.jugadores.map(j=>`<option value="${j}">${j}</option>`).join('')}</select>
+                    <input type="number" id="porc-${r.id}" placeholder="%" style="width:50px;"><button onclick="asignarGanador(${r.id})">OK</button></div>
+                    ${r.ganadores.map(g => `<div>• ${g.nombre}: ${g.euros.toFixed(2)}€</div>`).join('')}
                 </div>`).join('');
 
             document.getElementById('listaCerradas').innerHTML = db.historial.slice().reverse().map((h, i) => `
                 <div class="historial-card" onclick="document.getElementById('det-${i}').classList.toggle('hidden')">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>📅 ${h.fecha}</strong>
-                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="event.stopPropagation(); borrarDeHistorial(${i})">X</button>` : ''}
-                    </div>
-                    <div id="det-${i}" class="hidden" style="margin-top:10px; font-size:0.9em; border-top:1px solid #ddd; padding-top:10px; color:#444;">
-                        ${h.liquidacion || "Sin detalles."}
-                    </div>
+                    <strong>📅 ${h.fecha}</strong>
+                    <div id="det-${i}" class="hidden" style="margin-top:10px; font-size:0.85em; border-top:1px solid #ddd; padding-top:10px;">${h.liquidacion || "---"}</div>
                 </div>`).join('');
 
             if (save) pushCloud();
@@ -346,36 +297,34 @@
             const tg = act.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
             const c = tg / (act.jugadores.length || 1);
             const res = document.getElementById('resultadoFinal');
-            res.innerHTML = `<hr><h3>Liquidación Unificada</h3><p>Gasto por persona: ${c.toFixed(2)}€</p><hr>`;
-            
+            res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p>`;
             let saldos = [];
             act.jugadores.forEach(j => {
-                const pagoGasto = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-                const balGasto = pagoGasto - c;
-                const apostado = act.movimientos.filter(m => m.nombre === j && m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
-                let ganado = 0;
-                act.rondas.forEach(r => {
-                    r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros);
-                });
-                const balJuego = ganado - apostado;
-                const neto = balGasto + balJuego;
+                const pg = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+                const ap = act.movimientos.filter(m => m.nombre === j && m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
+                let ga = 0; act.rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ga += g.euros); });
+                const neto = (pg - c) + (ga - ap);
                 saldos.push({ n: j, m: neto });
-                res.innerHTML += `<p>${j}: <b>${neto.toFixed(2)}€</b> <small style="color:#666;">(Comida: ${balGasto.toFixed(2)} | Juego: ${balJuego.toFixed(2)})</small></p>`;
+                res.innerHTML += `<p>${j}: <b>${neto.toFixed(2)}€</b></p>`;
             });
-
-            res.innerHTML += "<hr><h4>Transferencias Finales:</h4>";
-            let deudores = saldos.filter(s => s.m < -0.01).sort((a,b) => a.m - b.m);
-            let acreedores = saldos.filter(s => s.m > 0.01).sort((a,b) => b.m - a.m);
+            let d = saldos.filter(s => s.m < -0.01).sort((a,b) => a.m - b.m);
+            let a = saldos.filter(s => s.m > 0.01).sort((a,b) => b.m - a.m);
             let i = 0, j = 0;
-            while(i < deudores.length && j < acreedores.length) {
-                let m = Math.min(Math.abs(deudores[i].m), acreedores[j].m);
-                res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${acreedores[j].n}</b></p>`;
-                deudores[i].m += m;
-                acreedores[j].m -= m;
-                if (Math.abs(deudores[i].m) < 0.01) i++;
-                if (acreedores[j].m < 0.01) j++;
+            res.innerHTML += "<hr><h4>Pagos:</h4>";
+            while(i < d.length && j < a.length) {
+                let m = Math.min(Math.abs(d[i].m), a[j].m);
+                res.innerHTML += `<p>💸 ${d[i].n} -> ${a[j].n}: <b>${m.toFixed(2)}€</b></p>`;
+                d[i].m += m; a[j].m -= m;
+                if (Math.abs(d[i].m) < 0.01) i++; if (a[j].m < 0.01) j++;
             }
             if (currentUser === 'Fer') document.getElementById('btnCerrarPartida').style.display = "block";
+        }
+
+        function quitarJugador(nombre) {
+            if (confirm(`¿Quitar a ${nombre}?`)) {
+                db.actual.jugadores = db.actual.jugadores.filter(j => j !== nombre);
+                actualizarTodo(true);
+            }
         }
     </script>
 </body>
