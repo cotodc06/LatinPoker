@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Latin Poker Cloud</title>
     <style>
-        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --accent: #f39c12; }
+        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --gold: #f1c40f; }
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
@@ -30,11 +30,11 @@
         .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
         
-        /* Ranking Chart */
-        .ranking-row { margin-bottom: 10px; }
-        .ranking-bar-bg { background: #eee; border-radius: 4px; height: 20px; width: 100%; margin-top: 4px; position: relative; }
-        .ranking-bar-fill { background: var(--accent); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-        .ranking-label { display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; }
+        /* Estilos Ranking */
+        .rank-item { margin-bottom: 8px; }
+        .rank-info { display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
+        .rank-bar-bg { background: #eee; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; }
+        .rank-bar-fill { background: var(--gold); height: 100%; border-radius: 10px; transition: width 0.6s ease-out; }
     </style>
 </head>
 <body>
@@ -61,14 +61,14 @@
             <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Conectado</span>
         </div>
 
+        <div class="caja" id="cajaRanking">
+            <h2>🏆 Hall of Fame (Premios Totales)</h2>
+            <div id="contenedorRanking"></div>
+        </div>
+
         <div class="caja">
             <h2>1. Jugadores</h2>
             <div id="listaJugadores"></div>
-        </div>
-
-        <div id="seccionRanking" class="caja hidden">
-            <h2>🏆 Ranking de Premios</h2>
-            <div id="contenedorRanking"></div>
         </div>
 
         <div class="caja">
@@ -241,8 +241,11 @@
             if (!confirm("¿Archivar noche definitivamente?")) return;
             ejecutarLiquidacion(); 
             const resHTML = document.getElementById('resultadoFinal').innerHTML;
-            const fecha = new Date().toLocaleString();
-            db.historial.push({ fecha: fecha, datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: resHTML });
+            db.historial.push({ 
+                fecha: new Date().toLocaleString(), 
+                datos: JSON.parse(JSON.stringify(db.actual)), 
+                liquidacion: resHTML 
+            });
             db.actual.movimientos = []; db.actual.rondas = [];
             db.actual.jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
             document.getElementById('resultadoFinal').innerHTML = "";
@@ -276,31 +279,34 @@
             document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
-            // ACTUALIZAR RANKING
-            const rankMap = {};
-            act.jugadores.forEach(j => rankMap[j] = 0);
-            act.rondas.forEach(r => {
-                r.ganadores.forEach(g => {
-                    if (rankMap[g.nombre] !== undefined) rankMap[g.nombre] += g.euros;
-                });
+            // LOGICA RANKING HISTORICO
+            const acumulado = {};
+            const todos = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+            todos.forEach(t => acumulado[t] = 0);
+
+            db.historial.forEach(noche => {
+                if(noche.datos && noche.datos.rondas) {
+                    noche.datos.rondas.forEach(r => {
+                        r.ganadores.forEach(g => {
+                            if(acumulado[g.nombre] !== undefined) acumulado[g.nombre] += g.euros;
+                        });
+                    });
+                }
             });
 
-            const sortedRanking = Object.entries(rankMap).sort((a,b) => b[1] - a[1]);
-            const maxWin = sortedRanking[0][1] || 1;
-            const rankDiv = document.getElementById('contenedorRanking');
+            const rankSorted = Object.entries(acumulado).sort((a,b) => b[1] - a[1]);
+            const maxVal = rankSorted[0][1] || 1;
             
-            if (sortedRanking.some(r => r[1] > 0)) {
-                document.getElementById('seccionRanking').classList.remove('hidden');
-                rankDiv.innerHTML = sortedRanking.map(([name, amount]) => `
-                    <div class="ranking-row">
-                        <div class="ranking-label"><span>${name}</span><span>${amount.toFixed(2)}€</span></div>
-                        <div class="ranking-bar-bg">
-                            <div class="ranking-bar-fill" style="width: ${(amount/maxWin*100)}%"></div>
-                        </div>
+            if (rankSorted.some(r => r[1] > 0)) {
+                document.getElementById('cajaRanking').style.display = "block";
+                document.getElementById('contenedorRanking').innerHTML = rankSorted.map(([n, v]) => `
+                    <div class="rank-item">
+                        <div class="rank-info"><span>${n}</span><span>${v.toFixed(2)}€</span></div>
+                        <div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${(v/maxVal*100)}%"></div></div>
                     </div>
                 `).join('');
             } else {
-                document.getElementById('seccionRanking').classList.add('hidden');
+                document.getElementById('cajaRanking').style.display = "none";
             }
 
             document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, index) => `
