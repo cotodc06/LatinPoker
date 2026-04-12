@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Latin Poker">
-    
     <link rel="icon" type="image/png" href="icono.png">
     <link rel="apple-touch-icon" href="icono.png">
-    <meta property="og:image" content="icono.png">
     <link rel="shortcut icon" href="icono.png">
+    <meta property="og:image" content="icono.png">
 
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Latin Poker Cloud</title>
     <style>
         :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; }
@@ -20,7 +18,8 @@
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
-        button { padding: 12px 15px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
+        button { padding: 12px 15px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; transition: opacity 0.2s; }
+        button:active { opacity: 0.7; }
         input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; }
         .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .chip { display: inline-flex; align-items: center; background: #dfe6e9; padding: 6px 10px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
@@ -28,9 +27,9 @@
         #loginOverlay { position: fixed; inset: 0; background: var(--dark); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
         .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; }
-        .loading { opacity: 0.5; pointer-events: none; }
+        .sync-active { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
-        .historial-item { font-size: 0.85em; padding: 10px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -119,9 +118,7 @@
 
         window.onload = () => {
             const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
-            if (savedUser) {
-                entrarApp(savedUser);
-            }
+            if (savedUser) entrarApp(savedUser);
         };
 
         function entrarApp(user) {
@@ -137,9 +134,8 @@
         async function intentarLogin() {
             const user = document.getElementById('loginUser').value;
             const pass = document.getElementById('loginPass').value;
-            if (pass === PASS_GRUPO) {
-                entrarApp(user);
-            } else { alert("Clave incorrecta"); }
+            if (pass === PASS_GRUPO) entrarApp(user);
+            else alert("Clave incorrecta");
         }
 
         async function inicializarCloud() {
@@ -154,34 +150,37 @@
                 binId = data.metadata.id;
                 localStorage.setItem(BIN_ID_KEY, binId);
             }
-            await sincronizar();
+            sincronizar(); // No usamos await aquí para no bloquear el inicio
         }
 
         async function sincronizar() {
             const btn = document.getElementById('btnSync');
-            btn.innerText = "⌛...";
-            document.body.classList.add('loading');
+            btn.classList.add('sync-active');
             try {
                 const binId = localStorage.getItem(BIN_ID_KEY);
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { 
-                    headers: { 'X-Master-Key': MASTER_KEY },
-                    cache: 'no-store'
+                    headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
+                if (!res.ok) throw new Error();
                 const data = await res.json();
                 db = data.record;
                 actualizarTodo(false);
-            } catch (e) { console.error("Error sincronizando"); }
-            btn.innerText = "☁️ Sincronizar";
-            document.body.classList.remove('loading');
+            } catch (e) { console.error("Error sync"); }
+            btn.classList.remove('sync-active');
         }
 
         async function pushCloud() {
             const binId = localStorage.getItem(BIN_ID_KEY);
-            await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-                body: JSON.stringify(db)
-            });
+            const btn = document.getElementById('btnSync');
+            btn.classList.add('sync-active');
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+                    body: JSON.stringify(db)
+                });
+            } catch (e) { alert("Error al guardar en la nube"); }
+            btn.classList.remove('sync-active');
         }
 
         function adaptarForm() {
@@ -191,7 +190,7 @@
             document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
         }
 
-        async function registrar() {
+        function registrar() {
             const t = document.getElementById('tipoMovimiento').value;
             const m = parseFloat(document.getElementById('monto').value);
             const d = document.getElementById('descGasto').value.trim();
@@ -211,39 +210,39 @@
             }
             document.getElementById('monto').value = ""; 
             document.getElementById('descGasto').value = "";
-            await actualizarTodo(true);
+            actualizarTodo(true);
         }
 
-        async function crearRonda() {
+        function crearRonda() {
             const m = parseFloat(document.getElementById('inputMontoRonda').value);
             const p = db.actual.movimientos.filter(x => x.tipo === 'apuesta').reduce((s, x) => s + x.monto, 0);
             const a = db.actual.rondas.reduce((s, x) => s + x.montoTotal, 0);
             if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Saldo insuficiente");
             db.actual.rondas.push({ id: Date.now(), montoTotal: m, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
-            await actualizarTodo(true);
+            actualizarTodo(true);
         }
 
-        async function asignarGanador(rid) {
+        function asignarGanador(rid) {
             const r = db.actual.rondas.find(x => x.id === rid);
             const p = parseFloat(document.getElementById(`porc-${rid}`).value);
             const s = r.ganadores.reduce((x, g) => x + g.p, 0);
             if (isNaN(p) || (s + p > 100)) return alert("Excede 100%");
             r.ganadores.push({ nombre: document.getElementById(`sel-${rid}`).value, p: p, euros: (r.montoTotal * p / 100) });
-            await actualizarTodo(true);
+            actualizarTodo(true);
         }
 
-        async function borrarM(id, b) {
+        function borrarM(id, b) {
             db.actual.movimientos = b ? db.actual.movimientos.filter(m => m.batchId !== b) : db.actual.movimientos.filter(m => m.id !== id);
-            await actualizarTodo(true);
+            actualizarTodo(true);
         }
 
-        async function borrarRonda(id) {
+        function borrarRonda(id) {
             db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
-            await actualizarTodo(true);
+            actualizarTodo(true);
         }
 
-        async function cerrarPartida() {
+        function cerrarPartida() {
             if (!confirm("¿Archivar noche definitivamente?")) return;
             const fecha = new Date().toLocaleString();
             db.historial.push({ fecha, datos: JSON.parse(JSON.stringify(db.actual)) });
@@ -251,7 +250,7 @@
             db.actual.rondas = [];
             document.getElementById('resultadoFinal').innerHTML = "";
             document.getElementById('btnCerrarPartida').style.display = "none";
-            await actualizarTodo(true);
+            actualizarTodo(true);
         }
 
         function actualizarTodo(save = false) {
@@ -282,7 +281,7 @@
                     <div class="flex-row">
                         <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
                         <input type="number" id="porc-${r.id}" placeholder="%" style="width: 55px;">
-                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary); padding:10px;">OK</button>
+                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
                     </div>
                     <ul style="padding:0; list-style:none; font-size:0.9em; margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
                         ${r.ganadores.map(g => `<li>• ${g.nombre}: <b>${g.euros.toFixed(2)}€</b> (${g.p}%)</li>`).join('')}
@@ -331,10 +330,7 @@
                     if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
                 } else break;
             }
-
-            if (currentUser === 'Fer') {
-                document.getElementById('btnCerrarPartida').style.display = "block";
-            }
+            if (currentUser === 'Fer') document.getElementById('btnCerrarPartida').style.display = "block";
         }
     </script>
 </body>
