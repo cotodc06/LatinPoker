@@ -100,6 +100,7 @@
 
     <script>
         const BIN_ID_KEY = 'latin_poker_bin_id';
+        const SESSION_USER_KEY = 'latin_poker_user';
         const MASTER_KEY = '$2a$10$drMaZ6/GZjGcx9IELywMpOMvT2On.seiBzjGuy.MxhDMP/JRC9xJW';
         const PASS_GRUPO = '1234';
         
@@ -109,25 +110,34 @@
             historial: []
         };
 
+        window.onload = () => {
+            const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
+            if (savedUser) {
+                entrarApp(savedUser);
+            }
+        };
+
+        function entrarApp(user) {
+            currentUser = user;
+            sessionStorage.setItem(SESSION_USER_KEY, user);
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('welcomeMsg').innerText = "Jugador: " + user;
+            if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
+            inicializarCloud();
+        }
+
         async function intentarLogin() {
             const user = document.getElementById('loginUser').value;
             const pass = document.getElementById('loginPass').value;
             if (pass === PASS_GRUPO) {
-                currentUser = user;
-                document.getElementById('loginOverlay').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                document.getElementById('welcomeMsg').innerText = "Jugador: " + user;
-                if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
-                
-                // Al loguear, primero intentamos leer de la nube
-                await inicializarCloud();
+                entrarApp(user);
             } else { alert("Clave incorrecta"); }
         }
 
         async function inicializarCloud() {
             let binId = localStorage.getItem(BIN_ID_KEY);
             if (!binId) {
-                // Si no hay BIN en este navegador, intentamos buscar uno existente o creamos uno nuevo
                 const res = await fetch("https://api.jsonbin.io/v3/b", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': false },
@@ -148,15 +158,12 @@
                 const binId = localStorage.getItem(BIN_ID_KEY);
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { 
                     headers: { 'X-Master-Key': MASTER_KEY },
-                    cache: 'no-store' // Forzamos a no usar caché del navegador
+                    cache: 'no-store'
                 });
                 const data = await res.json();
                 db = data.record;
                 actualizarTodo(false);
-            } catch (e) { 
-                console.error("Error sincronizando");
-                alert("Error de conexión con la nube");
-            }
+            } catch (e) { console.error("Error sincronizando"); }
             btn.innerText = "☁️ Sincronizar";
             document.body.classList.remove('loading');
         }
@@ -185,7 +192,7 @@
 
             if (t === 'apuesta_general') {
                 const b = Date.now();
-                db.actual.jugadores.forEach(j => db.actual.movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Gral' }));
+                db.actual.jugadores.forEach(j => db.actual.movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Apuesta General' }));
             } else {
                 db.actual.movimientos.push({ 
                     id: Date.now(), 
@@ -197,17 +204,17 @@
             }
             document.getElementById('monto').value = ""; 
             document.getElementById('descGasto').value = "";
-            await actualizarTodo(true); // Sube automáticamente
+            await actualizarTodo(true);
         }
 
         async function crearRonda() {
             const m = parseFloat(document.getElementById('inputMontoRonda').value);
             const p = db.actual.movimientos.filter(x => x.tipo === 'apuesta').reduce((s, x) => s + x.monto, 0);
             const a = db.actual.rondas.reduce((s, x) => s + x.montoTotal, 0);
-            if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Saldo insuficiente en el pozo");
+            if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Saldo insuficiente");
             db.actual.rondas.push({ id: Date.now(), montoTotal: m, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
-            await actualizarTodo(true); // Sube automáticamente
+            await actualizarTodo(true);
         }
 
         async function asignarGanador(rid) {
@@ -216,7 +223,7 @@
             const s = r.ganadores.reduce((x, g) => x + g.p, 0);
             if (isNaN(p) || (s + p > 100)) return alert("Excede 100%");
             r.ganadores.push({ nombre: document.getElementById(`sel-${rid}`).value, p: p, euros: (r.montoTotal * p / 100) });
-            await actualizarTodo(true); // Sube automáticamente
+            await actualizarTodo(true);
         }
 
         async function borrarM(id, b) {
@@ -230,7 +237,7 @@
         }
 
         async function cerrarPartida() {
-            if (!confirm("¿Cerrar definitivamente? Se archivará la noche.")) return;
+            if (!confirm("¿Archivar noche definitivamente?")) return;
             const fecha = new Date().toLocaleString();
             db.historial.push({ fecha, datos: JSON.parse(JSON.stringify(db.actual)) });
             db.actual.movimientos = [];
@@ -268,7 +275,7 @@
                     <div class="flex-row">
                         <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
                         <input type="number" id="porc-${r.id}" placeholder="%" style="width: 55px;">
-                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
+                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary); padding:10px;">OK</button>
                     </div>
                     <ul style="padding:0; list-style:none; font-size:0.9em; margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
                         ${r.ganadores.map(g => `<li>• ${g.nombre}: <b>${g.euros.toFixed(2)}€</b> (${g.p}%)</li>`).join('')}
@@ -310,10 +317,12 @@
             let d_copy = deudores.map(x => ({...x}));
             let a_copy = acreedores.map(x => ({...x}));
             while(i < d_copy.length && k < a_copy.length) {
-                let m = Math.min(d_copy[i].m, a_copy[k].m);
-                res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
-                d_copy[i].m -= m; a_copy[k].m -= m;
-                if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
+                if (a_copy[k]) {
+                    let m = Math.min(d_copy[i].m, a_copy[k].m);
+                    res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
+                    d_copy[i].m -= m; a_copy[k].m -= m;
+                    if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
+                } else break;
             }
 
             if (currentUser === 'Fer') {
