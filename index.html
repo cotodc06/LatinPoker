@@ -238,8 +238,9 @@
             actualizarTodo(true);
         }
 
-        function borrarM(id, b) {
-            db.actual.movimientos = b ? db.actual.movimientos.filter(m => m.batchId !== b) : db.actual.movimientos.filter(m => m.id !== id);
+        function borrarM(id) {
+            // Cambio clave: eliminación estrictamente individual (ignora batchId)
+            db.actual.movimientos = db.actual.movimientos.filter(m => m.id !== id);
             actualizarTodo(true);
         }
 
@@ -286,7 +287,7 @@
             const hUI = document.getElementById('listaHistorial'); hUI.innerHTML = "";
             act.movimientos.forEach(m => {
                 if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
-                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> ${currentUser==='Fer'?`<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id},${m.batchId||0})">X</button>`:''}</li>`;
+                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> ${currentUser==='Fer'?`<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id})">X</button>`:''}</li>`;
             });
             document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
@@ -310,6 +311,7 @@
                 }
             });
 
+            // Eliminado el filtro .filter(s => i < 3) para mostrar a todos
             const sorted = Object.entries(stats).filter(s => s[1].dinero > 0 || s[1].rondas > 0).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
             const body = document.getElementById('bodyRanking');
             body.innerHTML = sorted.map(([nombre, val], i) => {
@@ -355,7 +357,7 @@
             res.innerHTML += "<hr><h4>Pagos:</h4>";
             while(i < d.length && j < a.length) {
                 let m = Math.min(Math.abs(d[i].m), a[j].m);
-                res.innerHTML += `<p>💸 ${d[i].n} -> ${a[j].n}: <b>${m.toFixed(2)}€</b></p>`;
+                res.innerHTML += `<p>💸 ${d[i].n} paga ${m.toFixed(2)}€ a ${a[j].n}</p>`;
                 d[i].m += m; a[j].m -= m;
                 if (Math.abs(d[i].m) < 0.01) i++; if (a[j].m < 0.01) j++;
             }
