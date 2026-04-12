@@ -3,116 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <link rel="icon" type="image/png" href="icono.png">
-    <link rel="apple-touch-icon" href="icono.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Latin Poker">
+    <link rel="icon" type="image/png" href="icono.png">
+    <link rel="apple-touch-icon" href="icono.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icono.png">
+    <meta property="og:image" content="icono.png">
 
     <title>Latin Poker Cloud</title>
     <style>
-        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; }
-        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
+        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --light: #ecf0f1; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; line-height: 1.4; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
+        h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
-        button { padding: 12px 15px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; }
-        input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; }
-        .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
-        .chip { display: inline-flex; align-items: center; background: #dfe6e9; padding: 6px 10px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
+        .flex-col { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+        label { font-size: 0.8em; font-weight: bold; color: #7f8c8d; }
+        button { padding: 12px 15px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: bold; -webkit-appearance: none; transition: background 0.2s, transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; width: 100%; box-sizing: border-box; }
+        .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; }
+        .pozo-item { display: flex; flex-direction: column; }
+        .pozo-val { font-size: 1.2em; font-weight: bold; color: var(--primary); }
+        .chip { display: inline-flex; align-items: center; background: #dfe6e9; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; font-weight: 500; }
         .hidden { display: none !important; }
-        #loginOverlay { position: fixed; inset: 0; background: var(--dark); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-        .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
-        .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; border: none; }
-        .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
-        .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
+        #loginOverlay { position: fixed; inset: 0; background: var(--dark); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; text-align: center; }
+        .tipo-tag { font-size: 0.7em; padding: 2px 6px; border-radius: 4px; background: #eee; margin-left: 8px; color: #666; text-transform: uppercase; font-weight: bold; }
+        .btn-borrar { background: var(--danger); padding: 5px 10px; font-size: 0.8em; margin-left: auto; }
+        .historial-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .historial-item:last-child { border-bottom: none; }
+        .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; position: relative; }
+        .ronda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: background 0.2s; }
+        .historial-card:hover { background: #f0f0f0; }
+        .detalles-historial { margin-top: 10px; font-size: 0.9em; border-top: 1px dotted #ccc; padding-top: 10px; color: #444; line-height: 1.6; }
+        .debug-info { font-size: 0.6em; color: #bbb; text-align: center; margin-top: 30px; padding: 10px; border-top: 1px solid #eee; }
+        .sync-active { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div id="loginOverlay">
+        <img src="icono.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 20px; border-radius: 15px;">
         <h1>Latin Poker</h1>
-        <p>Selecciona tu nombre</p>
-        <select id="loginUser" style="width: 220px; margin-bottom: 10px;">
-            <option value="Chris">Chris</option>
-            <option value="Fer">Fer (Admin)</option>
-            <option value="Juli">Juli</option>
-            <option value="Luis">Luis</option>
-            <option value="Mati">Mati</option>
-            <option value="Rodri">Rodri</option>
-            <option value="Tito">Tito</option>
-        </select>
-        <input type="password" id="loginPass" placeholder="Contraseña" style="width: 200px; margin-bottom: 20px;">
-        <button onclick="intentarLogin()">ENTRAR</button>
+        <p>Introduce tus credenciales de acceso</p>
+        <div style="width: 100%; max-width: 250px;">
+            <select id="loginUser" style="margin-bottom: 15px;">
+                <option value="Chris">Chris</option>
+                <option value="Fer">Fer (Admin)</option>
+                <option value="Juli">Juli</option>
+                <option value="Luis">Luis</option>
+                <option value="Mati">Mati</option>
+                <option value="Rodri">Rodri</option>
+                <option value="Tito">Tito</option>
+            </select>
+            <input type="password" id="loginPass" placeholder="Contraseña" style="margin-bottom: 20px;">
+            <button onclick="intentarLogin()" style="width: 100%; background: var(--secondary);">ENTRAR</button>
+        </div>
     </div>
 
     <div id="mainApp" class="hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <strong id="welcomeMsg"></strong>
-            <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Conectado</span>
+            <strong id="welcomeMsg" style="color: var(--dark);"></strong>
+            <span id="syncIndicator" style="font-size: 0.75em; color: #95a5a6; font-weight: bold;">☁️ Conectado</span>
         </div>
 
         <div class="caja">
-            <h2>1. Jugadores</h2>
+            <h2>1. Jugadores en la mesa</h2>
             <div id="listaJugadores"></div>
         </div>
 
         <div class="caja">
-            <h2>2. Ingresos</h2>
+            <h2>2. Registro de Ingresos</h2>
             <div class="flex-row">
-                <select id="tipoMovimiento" onchange="adaptarForm()">
-                    <option value="gasto">Gasto</option>
-                    <option value="apuesta_general">Apuesta General</option>
-                    <option value="reenganche">Reenganche</option>
-                </select>
-                <div id="capPersona"><select id="selectPersona"></select></div>
-                <input type="number" id="monto" placeholder="€" style="width: 75px;">
-                <input type="text" id="descGasto" placeholder="¿Qué es?">
-                <button onclick="registrar()" style="background: var(--secondary);">OK</button>
+                <div class="flex-col" style="flex: 1.5;">
+                    <label>Tipo</label>
+                    <select id="tipoMovimiento" onchange="adaptarForm()">
+                        <option value="gasto">Gasto Común</option>
+                        <option value="apuesta_general">Apuesta General</option>
+                        <option value="reenganche">Reenganche</option>
+                    </select>
+                </div>
+                <div id="capPersona" class="flex-col">
+                    <label>Jugador</label>
+                    <select id="selectPersona"></select>
+                </div>
+                <div class="flex-col" style="flex: 0.8;">
+                    <label>Monto (€)</label>
+                    <input type="number" id="monto" placeholder="0.00">
+                </div>
+                <div class="flex-col" id="capDesc" style="flex: 1.5;">
+                    <label>Descripción</label>
+                    <input type="text" id="descGasto" placeholder="Ej: Pizza, Bebida...">
+                </div>
+                <button onclick="registrar()" style="background: var(--secondary); height: 45px;">AÑADIR</button>
             </div>
+            
             <div class="pozo-info">
-                💰 Pozo: <span id="uiPozoTotal">0</span>€ | <b>Disp: <span id="uiPozoDisp">0</span>€</b> | Gastos: <span id="uiGastos">0</span>€
+                <div class="pozo-item">
+                    <label>POZO TOTAL</label>
+                    <span class="pozo-val" id="uiPozoTotal">0.00</span><small>€</small>
+                </div>
+                <div class="pozo-item">
+                    <label>DISPONIBLE</label>
+                    <span class="pozo-val" id="uiPozoDisp" style="color: var(--secondary);">0.00</span><small>€</small>
+                </div>
+                <div class="pozo-item">
+                    <label>GASTOS</label>
+                    <span class="pozo-val" id="uiGastos" style="color: var(--danger);">0.00</span><small>€</small>
+                </div>
             </div>
-            <ul id="listaHistorial" style="list-style:none; padding:0; font-size:0.85em; max-height:180px; overflow-y:auto;"></ul>
+            
+            <label style="display:block; margin-bottom: 5px;">Últimos movimientos:</label>
+            <div id="listaHistorial" style="max-height: 150px; overflow-y: auto; background: #fdfdfd; border: 1px solid #eee; border-radius: 8px; padding: 5px 10px;"></div>
         </div>
 
         <div class="caja">
-            <h2>3. Rondas</h2>
+            <h2>3. Gestión de Rondas</h2>
             <div class="flex-row">
-                <input type="number" id="inputMontoRonda" placeholder="€" style="flex:1">
-                <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir</button>
+                <div class="flex-col">
+                    <label>Monto de la Ronda (€)</label>
+                    <input type="number" id="inputMontoRonda" placeholder="Pozo a repartir">
+                </div>
+                <button onclick="crearRonda()" style="background: #8e44ad; height: 45px;">ABRIR RONDA</button>
             </div>
             <div id="contenedorRondas"></div>
         </div>
 
-        <div class="caja" style="background: var(--dark); color: white;">
-            <button onclick="ejecutarLiquidacion()" style="width: 100%; background: #f1c40f; color: black;">LIQUIDAR</button>
+        <div class="caja" style="background: var(--dark); color: white; border: none;">
+            <button onclick="ejecutarLiquidacion()" style="width: 100%; background: #f1c40f; color: black; font-size: 1.1em; margin-bottom: 10px;">CALCULAR LIQUIDACIÓN FINAL</button>
             <div id="resultadoFinal"></div>
-            <div id="adminTools" class="hidden">
-                <hr>
-                <button id="btnCerrarPartida" onclick="cerrarPartida()" style="background: var(--danger); width: 100%; display: none;">ARCHIVAR NOCHE</button>
+            <div id="adminTools" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.2);">
+                <button id="btnCerrarPartida" onclick="cerrarPartida()" style="background: var(--danger); width: 100%; display: none; border: 1px solid white;">ARCHIVAR NOCHE DEFINITIVAMENTE</button>
             </div>
         </div>
 
         <div class="caja">
-            <h2>Noches Anteriores</h2>
+            <h2>Noches Anteriores (Historial)</h2>
             <div id="listaCerradas"></div>
+        </div>
+
+        <div class="debug-info">
+            Sesión activa: <span id="debugUser">---</span> | ID Bin: <span id="debugBinId">---</span><br>
+            <a href="#" onclick="limpiarCacheForzado()" style="color:#bbb; text-decoration: underline;">Limpiar sesión y configuración</a>
         </div>
     </div>
 
     <script>
+        const BIN_ID_KEY = 'latin_poker_bin_id';
         const SESSION_USER_KEY = 'latin_poker_user';
         const MASTER_KEY = '$2a$10$drMaZ6/GZjGcx9IELywMpOMvT2On.seiBzjGuy.MxhDMP/JRC9xJW';
         const PASS_GRUPO = '1234';
-        const FIXED_BIN_ID = '6619586fe41b4d34e4e2071d'; 
-
+        
         let currentUser = "";
-        let db = { actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] }, historial: [] };
+        let db = { 
+            actual: { 
+                jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], 
+                movimientos: [], 
+                rondas: [] 
+            }, 
+            historial: [] 
+        };
 
         window.onload = async () => {
             const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
-            if (savedUser) await entrarApp(savedUser);
+            if (savedUser) {
+                await entrarApp(savedUser);
+            }
         };
 
         async function entrarApp(user) {
@@ -120,176 +178,292 @@
             sessionStorage.setItem(SESSION_USER_KEY, user);
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
-            document.getElementById('welcomeMsg').innerText = "Hola, " + user;
-            if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
-            actualizarTodo(); 
-            await sincronizar();
+            document.getElementById('welcomeMsg').innerText = "Bienvenido, " + user;
+            document.getElementById('debugUser').innerText = user;
+            if (user === 'Fer') {
+                document.getElementById('adminTools').classList.remove('hidden');
+            }
+            await inicializarCloud();
         }
 
         async function intentarLogin() {
             const user = document.getElementById('loginUser').value;
-            if (document.getElementById('loginPass').value === PASS_GRUPO) await entrarApp(user);
-            else alert("Clave incorrecta");
+            const pass = document.getElementById('loginPass').value;
+            if (pass === PASS_GRUPO) {
+                await entrarApp(user);
+            } else {
+                alert("Contraseña incorrecta para el grupo.");
+            }
+        }
+
+        async function inicializarCloud() {
+            let binId = localStorage.getItem(BIN_ID_KEY);
+            if (!binId) {
+                const res = await fetch("https://api.jsonbin.io/v3/b", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': false },
+                    body: JSON.stringify(db)
+                });
+                const data = await res.json();
+                binId = data.metadata.id;
+                localStorage.setItem(BIN_ID_KEY, binId);
+            }
+            document.getElementById('debugBinId').innerText = binId;
+            await sincronizar();
         }
 
         async function sincronizar() {
             const ind = document.getElementById('syncIndicator');
-            ind.innerText = "⌛...";
+            ind.classList.add('sync-active');
             try {
-                const res = await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}/latest?t=${Date.now()}`, { 
+                const binId = localStorage.getItem(BIN_ID_KEY);
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { 
                     headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
-                if (data.record && data.record.actual) {
+                if (data.record) {
                     db = data.record;
                     actualizarTodo(false);
                 }
-            } catch (e) { console.error("Error sync"); }
-            ind.innerText = "☁️ Conectado";
+            } catch (e) {
+                console.error("Error al sincronizar con la nube:", e);
+            } finally {
+                ind.classList.remove('sync-active');
+            }
         }
 
         async function pushCloud() {
             const ind = document.getElementById('syncIndicator');
-            ind.innerText = "⌛...";
+            ind.classList.add('sync-active');
             try {
-                await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}`, {
+                const binId = localStorage.getItem(BIN_ID_KEY);
+                await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                     body: JSON.stringify(db)
                 });
-            } catch (e) { console.error("Error al guardar"); }
-            ind.innerText = "☁️ Conectado";
+            } catch (e) {
+                console.error("Error al guardar en la nube:", e);
+            } finally {
+                ind.classList.remove('sync-active');
+            }
         }
 
         function adaptarForm() {
             const t = document.getElementById('tipoMovimiento').value;
-            const show = (t === 'gasto' || t === 'reenganche');
-            document.getElementById('descGasto').style.display = show ? 'block' : 'none';
-            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
+            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'flex';
+            document.getElementById('capDesc').style.display = (t === 'apuesta_general') ? 'none' : 'flex';
         }
 
-        function registrar() {
+        async function registrar() {
             const t = document.getElementById('tipoMovimiento').value;
             const m = parseFloat(document.getElementById('monto').value);
             const d = document.getElementById('descGasto').value.trim();
-            if (isNaN(m)) return;
+            
+            if (isNaN(m) || m <= 0) return alert("Ingresa un monto válido.");
+
             if (t === 'apuesta_general') {
-                const b = Date.now();
-                db.actual.jugadores.forEach(j => db.actual.movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Apuesta General' }));
+                const bId = Date.now();
+                db.actual.jugadores.forEach(j => {
+                    db.actual.movimientos.push({ id: Math.random(), batchId: bId, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Apuesta General' });
+                });
             } else {
-                db.actual.movimientos.push({ id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', nombre: document.getElementById('selectPersona').value, monto: m, detalle: d || (t==='gasto'?'Gasto':'Reenganche') });
+                const p = document.getElementById('selectPersona').value;
+                db.actual.movimientos.push({ 
+                    id: Date.now(), 
+                    tipo: t === 'gasto' ? 'gasto' : 'apuesta', 
+                    nombre: p, 
+                    monto: m, 
+                    detalle: d || (t === 'gasto' ? 'Gasto' : 'Reenganche') 
+                });
             }
-            document.getElementById('monto').value = ""; document.getElementById('descGasto').value = "";
-            actualizarTodo(true);
+            
+            document.getElementById('monto').value = "";
+            document.getElementById('descGasto').value = "";
+            await actualizarTodo(true);
         }
 
         function crearRonda() {
             const m = parseFloat(document.getElementById('inputMontoRonda').value);
-            const p = db.actual.movimientos.filter(x => x.tipo === 'apuesta').reduce((s, x) => s + x.monto, 0);
-            const a = db.actual.rondas.reduce((s, x) => s + x.montoTotal, 0);
-            if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Fondo insuficiente");
+            const pozoTotal = db.actual.movimientos.filter(x => x.tipo === 'apuesta').reduce((s, x) => s + x.monto, 0);
+            const repartido = db.actual.rondas.reduce((s, x) => s + x.montoTotal, 0);
+            
+            if (isNaN(m) || m <= 0) return alert("Ingresa un monto de ronda válido.");
+            if (repartido + m > pozoTotal + 0.01) return alert("No hay suficiente dinero en el pozo.");
+
             db.actual.rondas.push({ id: Date.now(), montoTotal: m, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
             actualizarTodo(true);
         }
 
-        function asignarGanador(rid) {
-            const r = db.actual.rondas.find(x => x.id === rid);
-            const p = parseFloat(document.getElementById(`porc-${rid}`).value);
-            const s = r.ganadores.reduce((x, g) => x + g.p, 0);
-            if (isNaN(p) || (s + p > 100)) return alert("Excede 100%");
-            r.ganadores.push({ nombre: document.getElementById(`sel-${rid}`).value, p: p, euros: (r.montoTotal * p / 100) });
+        function asignarGanador(rId) {
+            const r = db.actual.rondas.find(x => x.id === rId);
+            const p = parseFloat(document.getElementById(`porc-${rId}`).value);
+            const jug = document.getElementById(`sel-${rId}`).value;
+            const sumaPorc = r.ganadores.reduce((s, g) => s + g.porcentaje, 0);
+
+            if (isNaN(p) || p <= 0 || (sumaPorc + p > 100.01)) return alert("Porcentaje inválido.");
+
+            r.ganadores.push({ nombre: jug, porcentaje: p, euros: (r.montoTotal * p / 100) });
             actualizarTodo(true);
         }
 
-        function borrarM(id, b) {
-            db.actual.movimientos = b ? db.actual.movimientos.filter(m => m.batchId !== b) : db.actual.movimientos.filter(m => m.id !== id);
+        function borrarMovimiento(id, batchId) {
+            if (batchId) {
+                db.actual.movimientos = db.actual.movimientos.filter(m => m.batchId !== batchId);
+            } else {
+                db.actual.movimientos = db.actual.movimientos.filter(m => m.id !== id);
+            }
             actualizarTodo(true);
         }
 
-        function borrarRonda(id) {
+        function eliminarRonda(id) {
+            if (!confirm("¿Eliminar esta ronda completa?")) return;
             db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
             actualizarTodo(true);
         }
 
-        function cerrarPartida() {
-            if (!confirm("¿Cerrar y archivar noche?")) return;
+        async function cerrarPartida() {
+            if (!confirm("¿Deseas archivar esta noche? Se limpiará la mesa actual.")) return;
+            
             ejecutarLiquidacion();
-            const resHTML = document.getElementById('resultadoFinal').innerHTML;
-            db.historial.push({ fecha: new Date().toLocaleString(), datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: resHTML });
-            db.actual.movimientos = []; db.actual.rondas = [];
+            const liqHTML = document.getElementById('resultadoFinal').innerHTML;
+            const fecha = new Date().toLocaleString();
+            
+            db.historial.push({ 
+                fecha: fecha, 
+                datos: JSON.parse(JSON.stringify(db.actual)), 
+                liquidacion: liqHTML 
+            });
+            
+            db.actual.movimientos = [];
+            db.actual.rondas = [];
             document.getElementById('resultadoFinal').innerHTML = "";
             document.getElementById('btnCerrarPartida').style.display = "none";
-            actualizarTodo(true);
+            await actualizarTodo(true);
         }
 
-        function borrarHistorial(idx) {
-            if(confirm("¿Borrar permanentemente?")) {
-                db.historial.splice(db.historial.length - 1 - idx, 1);
-                actualizarTodo(true);
-            }
+        function borrarDelHistorial(idx) {
+            if (!confirm("¿Borrar permanentemente este registro del historial?")) return;
+            // Corregimos índice por el reverse
+            const realIdx = db.historial.length - 1 - idx;
+            db.historial.splice(realIdx, 1);
+            actualizarTodo(true);
         }
 
         function actualizarTodo(save = false) {
             const act = db.actual;
             document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `<span class="chip">${j}</span>`).join('');
             document.getElementById('selectPersona').innerHTML = act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
-            let tg = 0, tp = 0;
-            const hUI = document.getElementById('listaHistorial'); hUI.innerHTML = "";
+            
+            let totalGastos = 0, totalPozo = 0;
+            const histUI = document.getElementById('listaHistorial');
+            histUI.innerHTML = "";
+            
             act.movimientos.forEach(m => {
-                if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
-                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ (${m.detalle}) ${currentUser==='Fer' ? `<button onclick="borrarM(${m.id},${m.batchId||0})" class="btn-borrar">X</button>` : ''}</li>`;
+                if (m.tipo === 'gasto') totalGastos += m.monto; else totalPozo += m.monto;
+                histUI.innerHTML += `
+                    <div class="historial-item">
+                        <span><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <small class="tipo-tag">${m.detalle}</small></span>
+                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarMovimiento(${m.id}, ${m.batchId})">X</button>` : ''}
+                    </div>`;
             });
-            const yaR = act.rondas.reduce((s, r) => s + r.montoTotal, 0);
-            document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
-            document.getElementById('uiPozoDisp').innerText = (tp - yaR).toFixed(2);
-            document.getElementById('uiGastos').innerText = tg.toFixed(2);
+
+            const totalRepartido = act.rondas.reduce((s, r) => s + r.montoTotal, 0);
+            document.getElementById('uiPozoTotal').innerText = totalPozo.toFixed(2);
+            document.getElementById('uiPozoDisp').innerText = (totalPozo - totalRepartido).toFixed(2);
+            document.getElementById('uiGastos').innerText = totalGastos.toFixed(2);
+
             document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, i) => `
                 <div class="ronda-card">
-                    <strong>RONDA ${i + 1}: ${r.montoTotal.toFixed(2)}€</strong>
-                    ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Eliminar</button>` : ''}
+                    <div class="ronda-header">
+                        <strong>RONDA ${i + 1}: ${r.montoTotal.toFixed(2)}€</strong>
+                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="eliminarRonda(${r.id})">Eliminar</button>` : ''}
+                    </div>
                     <div class="flex-row">
-                        <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
-                        <button onclick="asignarGanador(${r.id})">OK</button>
+                        <div class="flex-col"><select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select></div>
+                        <div class="flex-col" style="flex:0.5;"><input type="number" id="porc-${r.id}" placeholder="%"></div>
+                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
                     </div>
-                    <ul style="font-size:0.9em;">${r.ganadores.map(g => `<li>${g.nombre}: ${g.euros.toFixed(2)}€</li>`).join('')}</ul>
+                    <ul style="padding-left: 20px; font-size: 0.9em; margin-top: 10px;">
+                        ${r.ganadores.map(g => `<li>${g.nombre}: <b>${g.euros.toFixed(2)}€</b> (${g.porcentaje}%)</li>`).join('')}
+                    </ul>
                 </div>`).join('');
-            document.getElementById('listaCerradas').innerHTML = (db.historial || []).slice().reverse().map((h, i) => `
+
+            document.getElementById('listaCerradas').innerHTML = db.historial.slice().reverse().map((h, i) => `
                 <div class="historial-card" onclick="document.getElementById('det-${i}').classList.toggle('hidden')">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong>📅 ${h.fecha}</strong>
-                        ${currentUser === 'Fer' ? `<button onclick="event.stopPropagation(); borrarHistorial(${i})" class="btn-borrar">X</button>` : ''}
+                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="event.stopPropagation(); borrarDelHistorial(${i})">X</button>` : ''}
                     </div>
-                    <div id="det-${i}" class="hidden" style="margin-top:10px; font-size:0.9em; border-top:1px solid #ddd; padding-top:10px;">${h.liquidacion || "Sin detalles."}</div>
+                    <div id="det-${i}" class="hidden detalles-historial">
+                        ${h.liquidacion || "Sin detalles de liquidación guardados."}
+                    </div>
                 </div>`).join('');
+
             if (save) pushCloud();
         }
 
         function ejecutarLiquidacion() {
             const act = db.actual;
-            const tg = act.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-            const c = tg / (act.jugadores.length || 1);
+            const gastosTotales = act.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+            const cuotaPersona = gastosTotales / (act.jugadores.length || 1);
             const res = document.getElementById('resultadoFinal');
-            res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
+            
+            res.innerHTML = `
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-top: 10px;">
+                    <h3 style="margin-top:0;">Resumen de Liquidación</h3>
+                    <p>Cada jugador debe aportar: <b>${cuotaPersona.toFixed(2)}€</b> por gastos comunes.</p>
+                    <hr style="opacity:0.2;">
+            `;
+            
             let deudores = [], acreedores = [];
+            
             act.jugadores.forEach(j => {
-                const pg = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-                let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
-                const bal = pg - c;
-                res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
-                if (bal < -0.01) deudores.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) acreedores.push({n: j, m: bal});
+                const pagoGasto = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+                let ganadoPozo = 0;
+                act.rondas.forEach(r => {
+                    r.ganadores.filter(g => g.nombre === j).forEach(g => ganadoPozo += g.euros);
+                });
+                
+                const balanceGasto = pagoGasto - cuotaPersona;
+                res.innerHTML += `<p>${j}: 💰 Premios: <b>+${ganadoPozo.toFixed(2)}€</b> | 🍽️ Gastos: ${balanceGasto >= 0 ? '<span style="color:#2ecc71;">+' : '<span style="color:#e74c3c;">'}${balanceGasto.toFixed(2)}€</span></p>`;
+                
+                if (balanceGasto < -0.01) deudores.push({n: j, m: Math.abs(balanceGasto)});
+                else if (balanceGasto > 0.01) acreedores.push({n: j, m: balanceGasto});
             });
-            res.innerHTML += "<hr><h4>Transferencias:</h4>";
+
+            res.innerHTML += "<hr style='opacity:0.2;'><h4>Instrucciones de Cobro:</h4>";
+            act.jugadores.forEach(j => {
+                let ganadoPozo = 0;
+                act.rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganadoPozo += g.euros); });
+                if (ganadoPozo > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${ganadoPozo.toFixed(2)}€</b> del pozo físico.</p>`;
+            });
+
+            res.innerHTML += "<hr style='opacity:0.2;'><h4>Transferencias entre Jugadores:</h4>";
             let i = 0, k = 0;
-            let d_copy = deudores.map(x => ({...x})), a_copy = acreedores.map(x => ({...x}));
+            let d_copy = deudores.map(x => ({...x}));
+            let a_copy = acreedores.map(x => ({...x}));
+            
             while(i < d_copy.length && k < a_copy.length) {
-                let m = Math.min(d_copy[i].m, a_copy[k].m);
-                res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
-                d_copy[i].m -= m; a_copy[k].m -= m;
-                if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
+                let montoTransf = Math.min(d_copy[i].m, a_copy[k].m);
+                res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${montoTransf.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
+                d_copy[i].m -= montoTransf;
+                a_copy[k].m -= montoTransf;
+                if (d_copy[i].m < 0.01) i++;
+                if (a_copy[k].m < 0.01) k++;
             }
+            
+            res.innerHTML += "</div>";
             if (currentUser === 'Fer') document.getElementById('btnCerrarPartida').style.display = "block";
+        }
+
+        function limpiarCacheForzado() {
+            if (confirm("¿Estás seguro de que deseas limpiar la sesión y el ID del servidor? Tendrás que volver a loguearte y se generará una base de datos nueva si no hay una vinculada.")) {
+                localStorage.removeItem(BIN_ID_KEY);
+                sessionStorage.clear();
+                location.reload();
+            }
         }
     </script>
 </body>
