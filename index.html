@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Latin Poker Cloud</title>
     <style>
-        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; }
+        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --accent: #f39c12; }
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
@@ -29,6 +29,12 @@
         .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; }
         .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
+        
+        /* Ranking Chart */
+        .ranking-row { margin-bottom: 10px; }
+        .ranking-bar-bg { background: #eee; border-radius: 4px; height: 20px; width: 100%; margin-top: 4px; position: relative; }
+        .ranking-bar-fill { background: var(--accent); height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .ranking-label { display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -58,6 +64,11 @@
         <div class="caja">
             <h2>1. Jugadores</h2>
             <div id="listaJugadores"></div>
+        </div>
+
+        <div id="seccionRanking" class="caja hidden">
+            <h2>🏆 Ranking de Premios</h2>
+            <div id="contenedorRanking"></div>
         </div>
 
         <div class="caja">
@@ -265,6 +276,33 @@
             document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
+            // ACTUALIZAR RANKING
+            const rankMap = {};
+            act.jugadores.forEach(j => rankMap[j] = 0);
+            act.rondas.forEach(r => {
+                r.ganadores.forEach(g => {
+                    if (rankMap[g.nombre] !== undefined) rankMap[g.nombre] += g.euros;
+                });
+            });
+
+            const sortedRanking = Object.entries(rankMap).sort((a,b) => b[1] - a[1]);
+            const maxWin = sortedRanking[0][1] || 1;
+            const rankDiv = document.getElementById('contenedorRanking');
+            
+            if (sortedRanking.some(r => r[1] > 0)) {
+                document.getElementById('seccionRanking').classList.remove('hidden');
+                rankDiv.innerHTML = sortedRanking.map(([name, amount]) => `
+                    <div class="ranking-row">
+                        <div class="ranking-label"><span>${name}</span><span>${amount.toFixed(2)}€</span></div>
+                        <div class="ranking-bar-bg">
+                            <div class="ranking-bar-fill" style="width: ${(amount/maxWin*100)}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('seccionRanking').classList.add('hidden');
+            }
+
             document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, index) => `
                 <div class="ronda-card">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -304,28 +342,22 @@
             
             let saldos = [];
             act.jugadores.forEach(j => {
-                // Balance Comida
                 const pagoGasto = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
                 const balGasto = pagoGasto - c;
-                
-                // Balance Juego
                 const apostado = act.movimientos.filter(m => m.nombre === j && m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
                 let ganado = 0;
                 act.rondas.forEach(r => {
                     r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros);
                 });
                 const balJuego = ganado - apostado;
-                
                 const neto = balGasto + balJuego;
                 saldos.push({ n: j, m: neto });
-                
                 res.innerHTML += `<p>${j}: <b>${neto.toFixed(2)}€</b> <small style="color:#666;">(Comida: ${balGasto.toFixed(2)} | Juego: ${balJuego.toFixed(2)})</small></p>`;
             });
 
             res.innerHTML += "<hr><h4>Transferencias Finales:</h4>";
             let deudores = saldos.filter(s => s.m < -0.01).sort((a,b) => a.m - b.m);
             let acreedores = saldos.filter(s => s.m > 0.01).sort((a,b) => b.m - a.m);
-
             let i = 0, j = 0;
             while(i < deudores.length && j < acreedores.length) {
                 let m = Math.min(Math.abs(deudores[i].m), acreedores[j].m);
