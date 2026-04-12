@@ -75,6 +75,12 @@
         <div class="caja">
             <h2>1. Jugadores</h2>
             <div id="listaJugadores"></div>
+            <div id="adminAddPlayer" class="hidden" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                <div class="flex-row">
+                    <input type="text" id="nuevoJugadorNombre" placeholder="Nombre jugador" style="flex:1">
+                    <button onclick="agregarJugador()" style="background: var(--secondary);">+ Añadir</button>
+                </div>
+            </div>
         </div>
 
         <div class="caja">
@@ -142,7 +148,10 @@
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
             document.getElementById('welcomeMsg').innerText = "Jugador: " + user;
-            if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
+            if (user === 'Fer') {
+                document.getElementById('adminTools').classList.remove('hidden');
+                document.getElementById('adminAddPlayer').classList.remove('hidden');
+            }
             await sincronizar();
         }
 
@@ -186,6 +195,15 @@
             const t = document.getElementById('tipoMovimiento').value;
             document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
             document.getElementById('descGasto').style.display = (t === 'gasto' || t === 'reenganche') ? 'block' : 'none';
+        }
+
+        function agregarJugador() {
+            const nombre = document.getElementById('nuevoJugadorNombre').value.trim();
+            if (nombre && !db.actual.jugadores.includes(nombre)) {
+                db.actual.jugadores.push(nombre);
+                document.getElementById('nuevoJugadorNombre').value = "";
+                actualizarTodo(true);
+            }
         }
 
         function registrar() {
@@ -240,7 +258,7 @@
         }
 
         function resetearPartidaActual() {
-            if (confirm("¿Reiniciar todos los datos de la partida actual?")) {
+            if (confirm("¿Reiniciar partida actual?")) {
                 db.actual.movimientos = [];
                 db.actual.rondas = [];
                 db.actual.jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
@@ -274,7 +292,9 @@
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
             const stats = {};
-            ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"].forEach(t => stats[t] = { rondas: 0, dinero: 0 });
+            const jugadoresReferencia = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito", ...act.jugadores];
+            const unicos = [...new Set(jugadoresReferencia)];
+            unicos.forEach(t => stats[t] = { rondas: 0, dinero: 0 });
 
             db.historial.forEach(n => {
                 if (n.datos && n.datos.rondas) {
@@ -290,7 +310,7 @@
                 }
             });
 
-            const sorted = Object.entries(stats).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
+            const sorted = Object.entries(stats).filter(s => s[1].dinero > 0 || s[1].rondas > 0).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
             const body = document.getElementById('bodyRanking');
             body.innerHTML = sorted.map(([nombre, val], i) => {
                 let medal = i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : "";
@@ -299,7 +319,7 @@
 
             document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, i) => `
                 <div class="ronda-card">
-                    <div style="display:flex; justify-content:space-between;"><strong>RONDA ${i+1}: ${r.montoTotal}€</strong>${currentUser==='Fer'?`<button class="btn-borrar" onclick="db.actual.rondas.splice(${i},1);actualizarTodo(true);">Eliminar</button>`:''}</div>
+                    <div style="display:flex; justify-content:space-between;"><strong>RONDA ${i+1}: ${r.montoTotal}€</strong>${currentUser==='Fer'?`<button class="btn-borrar" onclick="db.actual.rondas.splice(${i},1);actualizarTodo(true);">Borrar</button>`:''}</div>
                     <div class="flex-row"><select id="sel-${r.id}">${act.jugadores.map(j=>`<option value="${j}">${j}</option>`).join('')}</select>
                     <input type="number" id="porc-${r.id}" placeholder="%" style="width:50px;"><button onclick="asignarGanador(${r.id})">OK</button></div>
                     ${r.ganadores.map(g => `<div>• ${g.nombre}: ${g.euros.toFixed(2)}€</div>`).join('')}
@@ -335,7 +355,7 @@
             res.innerHTML += "<hr><h4>Pagos:</h4>";
             while(i < d.length && j < a.length) {
                 let m = Math.min(Math.abs(d[i].m), a[j].m);
-                res.innerHTML += `<p>💸 ${d[i].n} paga ${m.toFixed(2)}€ a ${a[j].n}</p>`;
+                res.innerHTML += `<p>💸 ${d[i].n} -> ${a[j].n}: <b>${m.toFixed(2)}€</b></p>`;
                 d[i].m += m; a[j].m -= m;
                 if (Math.abs(d[i].m) < 0.01) i++; if (a[j].m < 0.01) j++;
             }
