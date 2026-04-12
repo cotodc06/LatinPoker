@@ -292,9 +292,9 @@
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
             const stats = {};
-            const jugadoresReferencia = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito", ...act.jugadores];
-            const unicos = [...new Set(jugadoresReferencia)];
-            unicos.forEach(t => stats[t] = { rondas: 0, dinero: 0 });
+            // Lista maestra de jugadores para asegurar que todos aparezcan en el Leaderboard
+            const todos = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
+            todos.forEach(t => stats[t] = { rondas: 0, dinero: 0 });
 
             db.historial.forEach(n => {
                 if (n.datos && n.datos.rondas) {
@@ -310,8 +310,8 @@
                 }
             });
 
-            // Ordenar y mostrar todos los que tengan actividad registrada
-            const sorted = Object.entries(stats).filter(s => s[1].dinero > 0 || s[1].rondas > 0).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
+            // Ranking sin filtro de ceros para mostrar a todos
+            const sorted = Object.entries(stats).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
             const body = document.getElementById('bodyRanking');
             body.innerHTML = sorted.map(([nombre, val], i) => {
                 let medal = i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : "";
