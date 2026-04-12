@@ -14,7 +14,7 @@
     <title>Latin Poker Cloud</title>
     <style>
         :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; }
-        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
+        body { font-family: -apple-system, system-ui, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
         .flex-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
@@ -52,7 +52,7 @@
     <div id="mainApp" class="hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <strong id="welcomeMsg"></strong>
-            <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Sincronizado</span>
+            <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Conectado</span>
         </div>
 
         <div class="caja">
@@ -142,14 +142,17 @@
         async function inicializarCloud() {
             let binId = localStorage.getItem(BIN_ID_KEY);
             if (!binId) {
-                const res = await fetch("https://api.jsonbin.io/v3/b", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': false },
-                    body: JSON.stringify(db)
-                });
-                const data = await res.json();
-                binId = data.metadata.id;
-                localStorage.setItem(BIN_ID_KEY, binId);
+                try {
+                    const res = await fetch("https://api.jsonbin.io/v3/b", {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': false },
+                        body: JSON.stringify(db)
+                    });
+                    const data = await res.json();
+                    binId = data.metadata.id;
+                    localStorage.setItem(BIN_ID_KEY, binId);
+                } catch (e) { console.error("Error creating bin", e); }
             }
             await sincronizar();
         }
@@ -160,6 +163,8 @@
             try {
                 const binId = localStorage.getItem(BIN_ID_KEY);
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { 
+                    method: 'GET',
+                    mode: 'cors',
                     headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
@@ -178,6 +183,7 @@
             try {
                 await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
                     method: 'PUT',
+                    mode: 'cors',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                     body: JSON.stringify(db)
                 });
@@ -242,26 +248,17 @@
         }
 
         function quitarJugador(nombre) {
-            if (!confirm(`¿Quitar a ${nombre} de esta partida?`)) return;
+            if (!confirm(`¿Quitar a ${nombre}?`)) return;
             db.actual.jugadores = db.actual.jugadores.filter(j => j !== nombre);
             actualizarTodo(true);
         }
 
         function cerrarPartida() {
-            if (!confirm("¿Archivar noche definitivamente?")) return;
+            if (!confirm("¿Archivar noche?")) return;
             ejecutarLiquidacion(); 
             const resHTML = document.getElementById('resultadoFinal').innerHTML;
-            const fecha = new Date().toLocaleString();
-            
-            db.historial.push({ 
-                fecha: fecha, 
-                datos: JSON.parse(JSON.stringify(db.actual)), 
-                liquidacion: resHTML 
-            });
-            
-            db.actual.movimientos = [];
-            db.actual.rondas = [];
-            // Reset de jugadores a la lista original de 7
+            db.historial.push({ fecha: new Date().toLocaleString(), datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: resHTML });
+            db.actual.movimientos = []; db.actual.rondas = [];
             db.actual.jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
             document.getElementById('resultadoFinal').innerHTML = "";
             document.getElementById('btnCerrarPartida').style.display = "none";
@@ -269,7 +266,7 @@
         }
 
         function borrarDeHistorial(index) {
-            if (confirm("¿Borrar esta noche del historial permanentemente?")) {
+            if (confirm("¿Borrar permanentemente?")) {
                 db.historial.splice(db.historial.length - 1 - index, 1);
                 actualizarTodo(true);
             }
@@ -278,20 +275,16 @@
         function actualizarTodo(save = false) {
             const act = db.actual;
             document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `
-                <span class="chip">
-                    ${j}
-                    ${currentUser === 'Fer' ? `<button class="btn-quitar-jugador" onclick="quitarJugador('${j}')">×</button>` : ''}
-                </span>
+                <span class="chip">${j}${currentUser === 'Fer' ? `<button class="btn-quitar-jugador" onclick="quitarJugador('${j}')">×</button>` : ''}</span>
             `).join('');
             
             document.getElementById('selectPersona').innerHTML = act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
             
             let tg = 0, tp = 0;
-            const hUI = document.getElementById('listaHistorial');
-            hUI.innerHTML = "";
+            const hUI = document.getElementById('listaHistorial'); hUI.innerHTML = "";
             act.movimientos.forEach(m => {
                 if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
-                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
+                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
                     ${currentUser === 'Fer' ? `<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id}, ${m.batchId || 0})">X</button>` : ''}</li>`;
             });
 
@@ -349,14 +342,13 @@
 
             res.innerHTML += "<hr><h4>1. Cobros del Pozo:</h4>";
             act.jugadores.forEach(j => {
-                let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
+                let g = 0; act.rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(x => g += x.euros); });
                 if (g > 0.01) res.innerHTML += `<p>🏆 ${j} retira ${g.toFixed(2)}€.</p>`;
             });
 
             res.innerHTML += "<hr><h4>2. Transferencias:</h4>";
             let i = 0, k = 0;
-            let d_copy = deudores.map(x => ({...x}));
-            let a_copy = acreedores.map(x => ({...x}));
+            let d_copy = deudores.map(x => ({...x})), a_copy = acreedores.map(x => ({...x}));
             while(i < d_copy.length && k < a_copy.length) {
                 let m = Math.min(d_copy[i].m, a_copy[k].m);
                 res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
