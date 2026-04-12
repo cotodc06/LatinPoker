@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Latin Poker Cloud</title>
     <style>
-        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --gold: #f1c40f; }
+        :root { --primary: #2980b9; --secondary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --gold: #f1c40f; --heart: #e84393; }
         body { font-family: -apple-system, sans-serif; max-width: 800px; margin: auto; padding: env(safe-area-inset-top) 15px 15px 15px; background: #f4f7f6; color: #333; }
         .caja { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 1.1em; margin-top: 0; }
@@ -30,11 +30,11 @@
         .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
         
-        /* Estilos Ranking */
+        /* Ranking Bars */
         .rank-item { margin-bottom: 8px; }
         .rank-info { display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
-        .rank-bar-bg { background: #eee; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; }
-        .rank-bar-fill { background: var(--gold); height: 100%; border-radius: 10px; transition: width 0.6s ease-out; }
+        .rank-bar-bg { background: #eee; border-radius: 10px; height: 10px; width: 100%; overflow: hidden; }
+        .rank-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease-out; }
     </style>
 </head>
 <body>
@@ -61,9 +61,11 @@
             <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Conectado</span>
         </div>
 
-        <div class="caja" id="cajaRanking">
-            <h2>🏆 Hall of Fame (Premios Totales)</h2>
-            <div id="contenedorRanking"></div>
+        <div class="caja" id="cajaStats">
+            <h2>🏆 El Ganador Más Querido (Rondas)</h2>
+            <div id="contenedorQuerido"></div>
+            <h2 style="margin-top:20px;">💸 El Ganador Menos Querido (Efectivo)</h2>
+            <div id="contenedorMenosQuerido"></div>
         </div>
 
         <div class="caja">
@@ -121,10 +123,7 @@
         const FIXED_BIN_ID = '69db9d49856a6821892677fe';
 
         let currentUser = "";
-        let db = {
-            actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] },
-            historial: []
-        };
+        let db = { actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] }, historial: [] };
 
         window.onload = async () => {
             const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
@@ -241,11 +240,7 @@
             if (!confirm("¿Archivar noche definitivamente?")) return;
             ejecutarLiquidacion(); 
             const resHTML = document.getElementById('resultadoFinal').innerHTML;
-            db.historial.push({ 
-                fecha: new Date().toLocaleString(), 
-                datos: JSON.parse(JSON.stringify(db.actual)), 
-                liquidacion: resHTML 
-            });
+            db.historial.push({ fecha: new Date().toLocaleString(), datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: resHTML });
             db.actual.movimientos = []; db.actual.rondas = [];
             db.actual.jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
             document.getElementById('resultadoFinal').innerHTML = "";
@@ -279,34 +274,41 @@
             document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
-            // LOGICA RANKING HISTORICO
-            const acumulado = {};
+            // RANKINGS HISTÓRICOS
+            const dinero = {}, victorias = {};
             const todos = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
-            todos.forEach(t => acumulado[t] = 0);
+            todos.forEach(t => { dinero[t] = 0; victorias[t] = 0; });
 
-            db.historial.forEach(noche => {
-                if(noche.datos && noche.datos.rondas) {
-                    noche.datos.rondas.forEach(r => {
-                        r.ganadores.forEach(g => {
-                            if(acumulado[g.nombre] !== undefined) acumulado[g.nombre] += g.euros;
+            db.historial.forEach(n => {
+                if (n.datos && n.datos.rondas) {
+                    n.datos.rondas.forEach(r => {
+                        let maxP = 0;
+                        r.ganadores.forEach(g => { 
+                            if(dinero[g.nombre] !== undefined) dinero[g.nombre] += g.euros;
+                            if(g.p > maxP) maxP = g.p;
                         });
+                        const ganadoresMax = r.ganadores.filter(g => g.p === maxP);
+                        ganadoresMax.forEach(g => { if(victorias[g.nombre] !== undefined) victorias[g.nombre] += (1 / ganadoresMax.length); });
                     });
                 }
             });
 
-            const rankSorted = Object.entries(acumulado).sort((a,b) => b[1] - a[1]);
-            const maxVal = rankSorted[0][1] || 1;
-            
-            if (rankSorted.some(r => r[1] > 0)) {
-                document.getElementById('cajaRanking').style.display = "block";
-                document.getElementById('contenedorRanking').innerHTML = rankSorted.map(([n, v]) => `
+            const renderRank = (data, color, contId, suffix) => {
+                const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]);
+                const max = sorted[0][1] || 1;
+                document.getElementById(contId).innerHTML = sorted.map(([n,v]) => `
                     <div class="rank-item">
-                        <div class="rank-info"><span>${n}</span><span>${v.toFixed(2)}€</span></div>
-                        <div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${(v/maxVal*100)}%"></div></div>
-                    </div>
-                `).join('');
+                        <div class="rank-info"><span>${n}</span><span>${v.toFixed(2)}${suffix}</span></div>
+                        <div class="rank-bar-bg"><div class="rank-bar-fill" style="background:${color}; width:${(v/max*100)}%"></div></div>
+                    </div>`).join('');
+            };
+
+            if (db.historial.length > 0) {
+                document.getElementById('cajaStats').style.display = "block";
+                renderRank(victorias, 'var(--heart)', 'contenedorQuerido', ' pts');
+                renderRank(dinero, 'var(--gold)', 'contenedorMenosQuerido', '€');
             } else {
-                document.getElementById('cajaRanking').style.display = "none";
+                document.getElementById('cajaStats').style.display = "none";
             }
 
             document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, index) => `
