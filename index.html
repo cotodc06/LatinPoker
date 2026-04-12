@@ -22,6 +22,7 @@
         .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
         .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; }
         .loading { opacity: 0.5; pointer-events: none; }
+        .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
         .historial-item { font-size: 0.85em; padding: 10px; border-bottom: 1px solid #eee; }
     </style>
 </head>
@@ -74,10 +75,10 @@
         </div>
 
         <div class="caja">
-            <h2>3. Rondas</h2>
+            <h2>3. Rondas de Premios</h2>
             <div class="flex-row">
                 <input type="number" id="inputMontoRonda" placeholder="€" style="flex:1">
-                <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir</button>
+                <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir Ronda</button>
             </div>
             <div id="contenedorRondas"></div>
         </div>
@@ -211,6 +212,11 @@
             actualizarTodo(true);
         }
 
+        async function borrarRonda(id) {
+            db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
+            actualizarTodo(true);
+        }
+
         async function cerrarPartida() {
             if (!confirm("¿Cerrar definitivamente? Se borrará lo actual y se guardará en el historial.")) return;
             const fecha = new Date().toLocaleString();
@@ -233,7 +239,7 @@
             act.movimientos.forEach(m => {
                 if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
                 hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
-                    ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarM(${m.id}, ${m.batchId || 0})">X</button>` : ''}</li>`;
+                    ${currentUser === 'Fer' ? `<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id}, ${m.batchId || 0})">X</button>` : ''}</li>`;
             });
 
             const yaR = act.rondas.reduce((s, r) => s + r.montoTotal, 0);
@@ -241,21 +247,24 @@
             document.getElementById('uiPozoDisp').innerText = (tp - yaR).toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
-            document.getElementById('contenedorRondas').innerHTML = act.rondas.map(r => `
-                <div class="ronda-card" style="margin-top:10px; border:1px solid #3498db; padding:10px; border-radius:8px;">
-                    <strong>PARTIDA: ${r.montoTotal.toFixed(2)}€</strong>
+            document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, index) => `
+                <div class="ronda-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <strong>RONDA ${index + 1}: ${r.montoTotal.toFixed(2)}€</strong>
+                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Eliminar</button>` : ''}
+                    </div>
                     <div class="flex-row">
                         <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
-                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
+                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 55px;">
+                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary); padding:10px;">OK</button>
                     </div>
-                    <ul style="padding:0; list-style:none; font-size:0.85em;">
-                        ${r.ganadores.map(g => `<li>• ${g.nombre}: ${g.euros.toFixed(2)}€ (${g.p}%)</li>`).join('')}
+                    <ul style="padding:0; list-style:none; font-size:0.9em; margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
+                        ${r.ganadores.map(g => `<li>• ${g.nombre}: <b>${g.euros.toFixed(2)}€</b> (${g.p}%)</li>`).join('')}
                     </ul>
                 </div>`).join('');
 
             document.getElementById('listaCerradas').innerHTML = db.historial.slice().reverse().map(h => `
-                <div class="historial-item">📅 ${h.fecha} <br> Pozo: ${h.datos.movimientos.filter(x=>x.tipo==='apuesta').reduce((s,x)=>s+x.monto,0).toFixed(2)}€</div>
+                <div class="historial-item">📅 ${h.fecha} <br> Pozo Total: ${h.datos.movimientos.filter(x=>x.tipo==='apuesta').reduce((s,x)=>s+x.monto,0).toFixed(2)}€</div>
             `).join('');
 
             if (save) pushCloud();
@@ -266,14 +275,14 @@
             const tg = act.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
             const c = tg / act.jugadores.length;
             const res = document.getElementById('resultadoFinal');
-            res.innerHTML = `<hr><h3>Resultado Final</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
+            res.innerHTML = `<hr><h3>Liquidación de Gastos</h3><p>Gasto por persona: ${c.toFixed(2)}€</p><hr>`;
             
             let deudores = [], acreedores = [];
             act.jugadores.forEach(j => {
                 const pg = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
                 let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
                 const bal = pg - c;
-                res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
+                res.innerHTML += `<p>${j}: 💰 Premo <b>+${g.toFixed(2)}€</b> | 🍽️ Gasto ${bal >= 0 ? '<b style="color:green">+' : '<b style="color:red">'}${bal.toFixed(2)}€</b></p>`;
                 if (bal < -0.01) deudores.push({n: j, m: Math.abs(bal)});
                 else if (bal > 0.01) acreedores.push({n: j, m: bal});
             });
@@ -281,22 +290,21 @@
             res.innerHTML += "<hr><h4>1. Retiros del Pozo Físico:</h4>";
             act.jugadores.forEach(j => {
                 let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
-                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b>.</p>`;
+                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b> del pozo.</p>`;
             });
 
-            res.innerHTML += "<hr><h4>2. Transferencias:</h4>";
+            res.innerHTML += "<hr><h4>2. Transferencias de Gastos:</h4>";
             let i = 0, k = 0;
-            while(i < deudores.length && k < acreedores.length) {
-                let m = Math.min(deudores[i].m, acreedores[j]?.m || 0);
-                if (acreedores[k]) {
-                    m = Math.min(deudores[i].m, acreedores[k].m);
-                    res.innerHTML += `<p>💸 <b>${deudores[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${acreedores[k].n}</b></p>`;
-                    deudores[i].m -= m; acreedores[k].m -= m;
-                    if (deudores[i].m < 0.01) i++; if (acreedores[k].m < 0.01) k++;
-                } else break;
+            let d_copy = deudores.map(x => ({...x}));
+            let a_copy = acreedores.map(x => ({...x}));
+
+            while(i < d_copy.length && k < a_copy.length) {
+                let m = Math.min(d_copy[i].m, a_copy[k].m);
+                res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
+                d_copy[i].m -= m; a_copy[k].m -= m;
+                if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
             }
 
-            // Mostrar botón de cierre solo al Admin
             if (currentUser === 'Fer') {
                 document.getElementById('btnCerrarPartida').style.display = "block";
             }
