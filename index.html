@@ -292,7 +292,6 @@
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
 
             const stats = {};
-            // Lista maestra de jugadores para asegurar que todos aparezcan en el Leaderboard
             const todos = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
             todos.forEach(t => stats[t] = { rondas: 0, dinero: 0 });
 
@@ -310,7 +309,6 @@
                 }
             });
 
-            // Ranking sin filtro de ceros para mostrar a todos
             const sorted = Object.entries(stats).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
             const body = document.getElementById('bodyRanking');
             body.innerHTML = sorted.map(([nombre, val], i) => {
@@ -343,12 +341,15 @@
             res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p>`;
             let saldos = [];
             act.jugadores.forEach(j => {
-                const pg = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-                const ap = act.movimientos.filter(m => m.nombre === j && m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
-                let ga = 0; act.rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ga += g.euros); });
-                const neto = (pg - c) + (ga - ap);
-                saldos.push({ n: j, m: neto });
-                res.innerHTML += `<p>${j}: <b>${neto.toFixed(2)}€</b></p>`;
+                const pagadoGasto = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
+                const balanceGasto = pagadoGasto - c;
+                const apostado = act.movimientos.filter(m => m.nombre === j && m.tipo === 'apuesta').reduce((s, m) => s + m.monto, 0);
+                let ganado = 0;
+                act.rondas.forEach(r => { r.ganadores.filter(g => g.nombre === j).forEach(g => ganado += g.euros); });
+                const balanceJuego = ganado - apostado;
+                const netoTotal = balanceGasto + balanceJuego;
+                saldos.push({ n: j, m: netoTotal });
+                res.innerHTML += `<p>${j}: <b>${netoTotal.toFixed(2)}€</b> <small style="color:#666;">(Comida: ${balanceGasto.toFixed(2)} | Juego: ${balanceJuego.toFixed(2)})</small></p>`;
             });
             let d = saldos.filter(s => s.m < -0.01).sort((a,b) => a.m - b.m);
             let a = saldos.filter(s => s.m > 0.01).sort((a,b) => b.m - a.m);
