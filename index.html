@@ -28,7 +28,6 @@
         .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; }
         .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
-        #resultadoFinal { font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -115,25 +114,28 @@
             historial: []
         };
 
-        window.onload = () => {
+        window.onload = async () => {
             const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
-            if (savedUser) entrarApp(savedUser);
+            if (savedUser) {
+                // Si hay sesión, primero intentamos conectar a la nube antes de mostrar nada
+                await entrarApp(savedUser);
+            }
         };
 
-        function entrarApp(user) {
+        async function entrarApp(user) {
             currentUser = user;
             sessionStorage.setItem(SESSION_USER_KEY, user);
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
             document.getElementById('welcomeMsg').innerText = "Jugador: " + user;
             if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
-            inicializarCloud();
+            await inicializarCloud();
         }
 
         async function intentarLogin() {
             const user = document.getElementById('loginUser').value;
             const pass = document.getElementById('loginPass').value;
-            if (pass === PASS_GRUPO) entrarApp(user);
+            if (pass === PASS_GRUPO) await entrarApp(user);
             else alert("Clave incorrecta");
         }
 
@@ -149,7 +151,7 @@
                 binId = data.metadata.id;
                 localStorage.setItem(BIN_ID_KEY, binId);
             }
-            sincronizar();
+            await sincronizar();
         }
 
         async function sincronizar() {
@@ -161,9 +163,11 @@
                     headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
-                db = data.record;
-                actualizarTodo(false);
-            } catch (e) { console.error("Error sync"); }
+                if (data.record) {
+                    db = data.record;
+                    actualizarTodo(false);
+                }
+            } catch (e) { console.error("Error sync", e); }
             ind.innerText = "☁️ Sincronizado";
         }
 
@@ -177,7 +181,7 @@
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                     body: JSON.stringify(db)
                 });
-            } catch (e) { console.error("Error push"); }
+            } catch (e) { console.error("Error push", e); }
             ind.innerText = "☁️ Sincronizado";
         }
 
@@ -239,7 +243,6 @@
 
         function cerrarPartida() {
             if (!confirm("¿Archivar noche definitivamente?")) return;
-            // Generamos la liquidación final antes de borrar los datos
             ejecutarLiquidacion(); 
             const resHTML = document.getElementById('resultadoFinal').innerHTML;
             const fecha = new Date().toLocaleString();
@@ -306,7 +309,7 @@
                         ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="event.stopPropagation(); borrarDeHistorial(${i})">X</button>` : ''}
                     </div>
                     <div id="det-${i}" class="hidden" style="margin-top:10px; font-size:0.9em; border-top:1px solid #ddd; padding-top:10px; color:#444;">
-                        ${h.liquidacion || "No hay detalles guardados."}
+                        ${h.liquidacion || "Sin detalles."}
                     </div>
                 </div>`).join('');
 
