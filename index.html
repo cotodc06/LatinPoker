@@ -105,7 +105,7 @@
         const SESSION_USER_KEY = 'latin_poker_user';
         const MASTER_KEY = '$2a$10$drMaZ6/GZjGcx9IELywMpOMvT2On.seiBzjGuy.MxhDMP/JRC9xJW';
         const PASS_GRUPO = '1234';
-        const FIXED_BIN_ID = '6619586fe41b4d34e4e2071d'; // ID Maestro Fijo
+        const FIXED_BIN_ID = '6619586fe41b4d34e4e2071d'; 
 
         let currentUser = "";
         let db = { actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] }, historial: [] };
@@ -122,6 +122,7 @@
             document.getElementById('mainApp').classList.remove('hidden');
             document.getElementById('welcomeMsg').innerText = "Hola, " + user;
             if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
+            actualizarTodo(); 
             await sincronizar();
         }
 
@@ -133,20 +134,23 @@
 
         async function sincronizar() {
             const ind = document.getElementById('syncIndicator');
-            ind.innerText = "⌛ Sincronizando...";
+            ind.innerText = "⌛...";
             try {
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}/latest?t=${Date.now()}`, { 
                     headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
-                if (data.record) { db = data.record; actualizarTodo(false); }
-            } catch (e) { console.error("Error sincronizando"); }
+                if (data.record && data.record.actual) {
+                    db = data.record;
+                    actualizarTodo(false);
+                }
+            } catch (e) { console.error("Error sync"); }
             ind.innerText = "☁️ Conectado";
         }
 
         async function pushCloud() {
             const ind = document.getElementById('syncIndicator');
-            ind.innerText = "⌛ Guardando...";
+            ind.innerText = "⌛...";
             try {
                 await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}`, {
                     method: 'PUT',
@@ -155,6 +159,13 @@
                 });
             } catch (e) { console.error("Error al guardar"); }
             ind.innerText = "☁️ Conectado";
+        }
+
+        function adaptarForm() {
+            const t = document.getElementById('tipoMovimiento').value;
+            const show = (t === 'gasto' || t === 'reenganche');
+            document.getElementById('descGasto').style.display = show ? 'block' : 'none';
+            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
         }
 
         function registrar() {
@@ -196,6 +207,11 @@
             actualizarTodo(true);
         }
 
+        function borrarRonda(id) {
+            db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
+            actualizarTodo(true);
+        }
+
         function cerrarPartida() {
             if (!confirm("¿Cerrar y archivar noche?")) return;
             ejecutarLiquidacion();
@@ -208,7 +224,7 @@
         }
 
         function borrarHistorial(idx) {
-            if(confirm("¿Borrar registro permanentemente?")) {
+            if(confirm("¿Borrar permanentemente?")) {
                 db.historial.splice(db.historial.length - 1 - idx, 1);
                 actualizarTodo(true);
             }
@@ -231,6 +247,7 @@
             document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, i) => `
                 <div class="ronda-card">
                     <strong>RONDA ${i + 1}: ${r.montoTotal.toFixed(2)}€</strong>
+                    ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Eliminar</button>` : ''}
                     <div class="flex-row">
                         <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
                         <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
@@ -238,7 +255,7 @@
                     </div>
                     <ul style="font-size:0.9em;">${r.ganadores.map(g => `<li>${g.nombre}: ${g.euros.toFixed(2)}€</li>`).join('')}</ul>
                 </div>`).join('');
-            document.getElementById('listaCerradas').innerHTML = db.historial.slice().reverse().map((h, i) => `
+            document.getElementById('listaCerradas').innerHTML = (db.historial || []).slice().reverse().map((h, i) => `
                 <div class="historial-card" onclick="document.getElementById('det-${i}').classList.toggle('hidden')">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <strong>📅 ${h.fecha}</strong>
@@ -273,13 +290,6 @@
                 if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
             }
             if (currentUser === 'Fer') document.getElementById('btnCerrarPartida').style.display = "block";
-        }
-
-        function adaptarForm() {
-            const t = document.getElementById('tipoMovimiento').value;
-            const show = (t === 'gasto' || t === 'reenganche');
-            document.getElementById('descGasto').style.display = show ? 'block' : 'none';
-            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
         }
     </script>
 </body>
