@@ -6,11 +6,9 @@
     
     <link rel="icon" type="image/png" href="icono.png">
     <link rel="apple-touch-icon" href="icono.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icono.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Latin Poker">
-    <meta property="og:image" content="icono.png">
 
     <title>Latin Poker Cloud</title>
     <style>
@@ -26,7 +24,7 @@
         .hidden { display: none !important; }
         #loginOverlay { position: fixed; inset: 0; background: var(--dark); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
-        .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; }
+        .btn-borrar { background: var(--danger); padding: 4px 8px; font-size: 0.8em; color: white; border-radius: 4px; border: none; }
         .historial-card { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
         .ronda-card { margin-top: 15px; border: 2px solid #3498db; padding: 15px; border-radius: 12px; background: #fff; }
     </style>
@@ -52,7 +50,7 @@
     <div id="mainApp" class="hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <strong id="welcomeMsg"></strong>
-            <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Sincronizado</span>
+            <span id="syncIndicator" style="font-size: 0.7em; color: #95a5a6;">☁️ Conectado</span>
         </div>
 
         <div class="caja">
@@ -80,20 +78,20 @@
         </div>
 
         <div class="caja">
-            <h2>3. Rondas de Premios</h2>
+            <h2>3. Rondas</h2>
             <div class="flex-row">
                 <input type="number" id="inputMontoRonda" placeholder="€" style="flex:1">
-                <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir Ronda</button>
+                <button onclick="crearRonda()" style="background: #8e44ad;">+ Abrir</button>
             </div>
             <div id="contenedorRondas"></div>
         </div>
 
         <div class="caja" style="background: var(--dark); color: white;">
-            <button onclick="ejecutarLiquidacion()" style="width: 100%; background: #f1c40f; color: black; font-size: 1.1em;">LIQUIDAR CUENTAS</button>
+            <button onclick="ejecutarLiquidacion()" style="width: 100%; background: #f1c40f; color: black;">LIQUIDAR</button>
             <div id="resultadoFinal"></div>
             <div id="adminTools" class="hidden">
                 <hr>
-                <button id="btnCerrarPartida" onclick="cerrarPartida()" style="background: var(--danger); width: 100%; display: none;">CERRAR Y ARCHIVAR PARTIDA</button>
+                <button id="btnCerrarPartida" onclick="cerrarPartida()" style="background: var(--danger); width: 100%; display: none;">ARCHIVAR NOCHE</button>
             </div>
         </div>
 
@@ -104,22 +102,17 @@
     </div>
 
     <script>
-        const BIN_ID_KEY = 'latin_poker_bin_id';
         const SESSION_USER_KEY = 'latin_poker_user';
         const MASTER_KEY = '$2a$10$drMaZ6/GZjGcx9IELywMpOMvT2On.seiBzjGuy.MxhDMP/JRC9xJW';
         const PASS_GRUPO = '1234';
-        
+        const FIXED_BIN_ID = '6619586fe41b4d34e4e2071d'; // ID Maestro Fijo
+
         let currentUser = "";
-        let db = {
-            actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] },
-            historial: []
-        };
+        let db = { actual: { jugadores: ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"], movimientos: [], rondas: [] }, historial: [] };
 
         window.onload = async () => {
             const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
-            if (savedUser) {
-                await entrarApp(savedUser);
-            }
+            if (savedUser) await entrarApp(savedUser);
         };
 
         async function entrarApp(user) {
@@ -127,70 +120,41 @@
             sessionStorage.setItem(SESSION_USER_KEY, user);
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
-            document.getElementById('welcomeMsg').innerText = "Jugador: " + user;
+            document.getElementById('welcomeMsg').innerText = "Hola, " + user;
             if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
-            await inicializarCloud();
+            await sincronizar();
         }
 
         async function intentarLogin() {
             const user = document.getElementById('loginUser').value;
-            const pass = document.getElementById('loginPass').value;
-            if (pass === PASS_GRUPO) await entrarApp(user);
+            if (document.getElementById('loginPass').value === PASS_GRUPO) await entrarApp(user);
             else alert("Clave incorrecta");
-        }
-
-        async function inicializarCloud() {
-            let binId = localStorage.getItem(BIN_ID_KEY);
-            if (!binId) {
-                const res = await fetch("https://api.jsonbin.io/v3/b", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': false },
-                    body: JSON.stringify(db)
-                });
-                const data = await res.json();
-                binId = data.metadata.id;
-                localStorage.setItem(BIN_ID_KEY, binId);
-            }
-            await sincronizar();
         }
 
         async function sincronizar() {
             const ind = document.getElementById('syncIndicator');
             ind.innerText = "⌛ Sincronizando...";
             try {
-                const binId = localStorage.getItem(BIN_ID_KEY);
-                // Usamos un timestamp para saltarnos la caché del iPhone
-                const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?t=${Date.now()}`, { 
-                    headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}/latest?t=${Date.now()}`, { 
+                    headers: { 'X-Master-Key': MASTER_KEY, 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
-                if (data.record) {
-                    db = data.record;
-                    actualizarTodo(false);
-                }
-            } catch (e) { console.error("Error sync", e); }
-            ind.innerText = "☁️ Sincronizado";
+                if (data.record) { db = data.record; actualizarTodo(false); }
+            } catch (e) { console.error("Error sincronizando"); }
+            ind.innerText = "☁️ Conectado";
         }
 
         async function pushCloud() {
-            const binId = localStorage.getItem(BIN_ID_KEY);
             const ind = document.getElementById('syncIndicator');
             ind.innerText = "⌛ Guardando...";
             try {
-                await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                await fetch(`https://api.jsonbin.io/v3/b/${FIXED_BIN_ID}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                     body: JSON.stringify(db)
                 });
-            } catch (e) { console.error("Error push", e); }
-            ind.innerText = "☁️ Sincronizado";
-        }
-
-        function adaptarForm() {
-            const t = document.getElementById('tipoMovimiento').value;
-            const show = (t === 'gasto' || t === 'reenganche');
-            document.getElementById('descGasto').style.display = show ? 'block' : 'none';
-            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
+            } catch (e) { console.error("Error al guardar"); }
+            ind.innerText = "☁️ Conectado";
         }
 
         function registrar() {
@@ -198,16 +162,11 @@
             const m = parseFloat(document.getElementById('monto').value);
             const d = document.getElementById('descGasto').value.trim();
             if (isNaN(m)) return;
-
             if (t === 'apuesta_general') {
                 const b = Date.now();
                 db.actual.jugadores.forEach(j => db.actual.movimientos.push({ id: Math.random(), batchId: b, tipo: 'apuesta', nombre: j, monto: m, detalle: 'Apuesta General' }));
             } else {
-                db.actual.movimientos.push({ 
-                    id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', 
-                    nombre: document.getElementById('selectPersona').value, 
-                    monto: m, detalle: d || (t==='gasto'?'Gasto':'Reenganche') 
-                });
+                db.actual.movimientos.push({ id: Date.now(), tipo: t==='gasto'?'gasto':'apuesta', nombre: document.getElementById('selectPersona').value, monto: m, detalle: d || (t==='gasto'?'Gasto':'Reenganche') });
             }
             document.getElementById('monto').value = ""; document.getElementById('descGasto').value = "";
             actualizarTodo(true);
@@ -217,7 +176,7 @@
             const m = parseFloat(document.getElementById('inputMontoRonda').value);
             const p = db.actual.movimientos.filter(x => x.tipo === 'apuesta').reduce((s, x) => s + x.monto, 0);
             const a = db.actual.rondas.reduce((s, x) => s + x.montoTotal, 0);
-            if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Saldo insuficiente");
+            if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Fondo insuficiente");
             db.actual.rondas.push({ id: Date.now(), montoTotal: m, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
             actualizarTodo(true);
@@ -237,33 +196,20 @@
             actualizarTodo(true);
         }
 
-        function borrarRonda(id) {
-            db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
-            actualizarTodo(true);
-        }
-
         function cerrarPartida() {
-            if (!confirm("¿Archivar noche definitivamente?")) return;
-            ejecutarLiquidacion(); 
+            if (!confirm("¿Cerrar y archivar noche?")) return;
+            ejecutarLiquidacion();
             const resHTML = document.getElementById('resultadoFinal').innerHTML;
-            const fecha = new Date().toLocaleString();
-            
-            db.historial.push({ 
-                fecha: fecha, 
-                datos: JSON.parse(JSON.stringify(db.actual)), 
-                liquidacion: resHTML 
-            });
-            
-            db.actual.movimientos = [];
-            db.actual.rondas = [];
+            db.historial.push({ fecha: new Date().toLocaleString(), datos: JSON.parse(JSON.stringify(db.actual)), liquidacion: resHTML });
+            db.actual.movimientos = []; db.actual.rondas = [];
             document.getElementById('resultadoFinal').innerHTML = "";
             document.getElementById('btnCerrarPartida').style.display = "none";
             actualizarTodo(true);
         }
 
-        function borrarDeHistorial(index) {
-            if (confirm("¿Borrar esta noche del historial permanentemente?")) {
-                db.historial.splice(db.historial.length - 1 - index, 1);
+        function borrarHistorial(idx) {
+            if(confirm("¿Borrar registro permanentemente?")) {
+                db.historial.splice(db.historial.length - 1 - idx, 1);
                 actualizarTodo(true);
             }
         }
@@ -272,48 +218,34 @@
             const act = db.actual;
             document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `<span class="chip">${j}</span>`).join('');
             document.getElementById('selectPersona').innerHTML = act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
-            
             let tg = 0, tp = 0;
-            const hUI = document.getElementById('listaHistorial');
-            hUI.innerHTML = "";
+            const hUI = document.getElementById('listaHistorial'); hUI.innerHTML = "";
             act.movimientos.forEach(m => {
                 if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
-                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
-                    ${currentUser === 'Fer' ? `<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id}, ${m.batchId || 0})">X</button>` : ''}</li>`;
+                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ (${m.detalle}) ${currentUser==='Fer' ? `<button onclick="borrarM(${m.id},${m.batchId||0})" class="btn-borrar">X</button>` : ''}</li>`;
             });
-
             const yaR = act.rondas.reduce((s, r) => s + r.montoTotal, 0);
             document.getElementById('uiPozoTotal').innerText = tp.toFixed(2);
             document.getElementById('uiPozoDisp').innerText = (tp - yaR).toFixed(2);
             document.getElementById('uiGastos').innerText = tg.toFixed(2);
-
-            document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, index) => `
+            document.getElementById('contenedorRondas').innerHTML = act.rondas.map((r, i) => `
                 <div class="ronda-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>RONDA ${index + 1}: ${r.montoTotal.toFixed(2)}€</strong>
-                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar</button>` : ''}
-                    </div>
+                    <strong>RONDA ${i + 1}: ${r.montoTotal.toFixed(2)}€</strong>
                     <div class="flex-row">
                         <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
-                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 55px;">
-                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
+                        <input type="number" id="porc-${r.id}" placeholder="%" style="width: 50px;">
+                        <button onclick="asignarGanador(${r.id})">OK</button>
                     </div>
-                    <ul style="padding:0; list-style:none; font-size:0.9em;">
-                        ${r.ganadores.map(g => `<li>• ${g.nombre}: <b>${g.euros.toFixed(2)}€</b></li>`).join('')}
-                    </ul>
+                    <ul style="font-size:0.9em;">${r.ganadores.map(g => `<li>${g.nombre}: ${g.euros.toFixed(2)}€</li>`).join('')}</ul>
                 </div>`).join('');
-
             document.getElementById('listaCerradas').innerHTML = db.historial.slice().reverse().map((h, i) => `
                 <div class="historial-card" onclick="document.getElementById('det-${i}').classList.toggle('hidden')">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
                         <strong>📅 ${h.fecha}</strong>
-                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="event.stopPropagation(); borrarDeHistorial(${i})">X</button>` : ''}
+                        ${currentUser === 'Fer' ? `<button onclick="event.stopPropagation(); borrarHistorial(${i})" class="btn-borrar">X</button>` : ''}
                     </div>
-                    <div id="det-${i}" class="hidden" style="margin-top:10px; font-size:0.9em; border-top:1px solid #ddd; padding-top:10px; color:#444;">
-                        ${h.liquidacion || "Sin detalles."}
-                    </div>
+                    <div id="det-${i}" class="hidden" style="margin-top:10px; font-size:0.9em; border-top:1px solid #ddd; padding-top:10px;">${h.liquidacion || "Sin detalles."}</div>
                 </div>`).join('');
-
             if (save) pushCloud();
         }
 
@@ -322,28 +254,18 @@
             const tg = act.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
             const c = tg / (act.jugadores.length || 1);
             const res = document.getElementById('resultadoFinal');
-            res.innerHTML = `<hr><h3>Liquidación Final</h3><p>Gasto por persona: ${c.toFixed(2)}€</p><hr>`;
-            
+            res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
             let deudores = [], acreedores = [];
             act.jugadores.forEach(j => {
                 const pg = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
                 let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
                 const bal = pg - c;
                 res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
-                if (bal < -0.01) deudores.push({n: j, m: Math.abs(bal)});
-                else if (bal > 0.01) acreedores.push({n: j, m: bal});
+                if (bal < -0.01) deudores.push({n: j, m: Math.abs(bal)}); else if (bal > 0.01) acreedores.push({n: j, m: bal});
             });
-
-            res.innerHTML += "<hr><h4>1. Cobros del Pozo:</h4>";
-            act.jugadores.forEach(j => {
-                let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
-                if (g > 0.01) res.innerHTML += `<p>🏆 ${j} retira ${g.toFixed(2)}€.</p>`;
-            });
-
-            res.innerHTML += "<hr><h4>2. Transferencias:</h4>";
+            res.innerHTML += "<hr><h4>Transferencias:</h4>";
             let i = 0, k = 0;
-            let d_copy = deudores.map(x => ({...x}));
-            let a_copy = acreedores.map(x => ({...x}));
+            let d_copy = deudores.map(x => ({...x})), a_copy = acreedores.map(x => ({...x}));
             while(i < d_copy.length && k < a_copy.length) {
                 let m = Math.min(d_copy[i].m, a_copy[k].m);
                 res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
@@ -351,6 +273,13 @@
                 if (d_copy[i].m < 0.01) i++; if (a_copy[k].m < 0.01) k++;
             }
             if (currentUser === 'Fer') document.getElementById('btnCerrarPartida').style.display = "block";
+        }
+
+        function adaptarForm() {
+            const t = document.getElementById('tipoMovimiento').value;
+            const show = (t === 'gasto' || t === 'reenganche');
+            document.getElementById('descGasto').style.display = show ? 'block' : 'none';
+            document.getElementById('capPersona').style.display = (t === 'apuesta_general') ? 'none' : 'block';
         }
     </script>
 </body>
