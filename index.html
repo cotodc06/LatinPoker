@@ -22,6 +22,7 @@
         input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: white; }
         .pozo-info { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #b8daff; text-align: center; }
         .chip { display: inline-flex; align-items: center; background: #dfe6e9; padding: 6px 10px; border-radius: 20px; margin: 4px; font-size: 0.9em; border: 1px solid #bdc3c7; }
+        .btn-quitar-jugador { margin-left: 8px; cursor: pointer; color: var(--danger); font-weight: bold; font-size: 1.2em; border: none; background: none; padding: 0 4px; }
         .hidden { display: none !important; }
         #loginOverlay { position: fixed; inset: 0; background: var(--dark); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .tipo-tag { font-size: 0.75em; padding: 2px 5px; border-radius: 4px; background: #eee; margin-left: 5px; color: #666; text-transform: uppercase; }
@@ -117,7 +118,6 @@
         window.onload = async () => {
             const savedUser = sessionStorage.getItem(SESSION_USER_KEY);
             if (savedUser) {
-                // Si hay sesión, primero intentamos conectar a la nube antes de mostrar nada
                 await entrarApp(savedUser);
             }
         };
@@ -241,6 +241,12 @@
             actualizarTodo(true);
         }
 
+        function quitarJugador(nombre) {
+            if (!confirm(`¿Quitar a ${nombre} de esta partida?`)) return;
+            db.actual.jugadores = db.actual.jugadores.filter(j => j !== nombre);
+            actualizarTodo(true);
+        }
+
         function cerrarPartida() {
             if (!confirm("¿Archivar noche definitivamente?")) return;
             ejecutarLiquidacion(); 
@@ -255,6 +261,8 @@
             
             db.actual.movimientos = [];
             db.actual.rondas = [];
+            // Reset de jugadores a la lista original de 7
+            db.actual.jugadores = ["Chris", "Fer", "Juli", "Luis", "Mati", "Rodri", "Tito"];
             document.getElementById('resultadoFinal').innerHTML = "";
             document.getElementById('btnCerrarPartida').style.display = "none";
             actualizarTodo(true);
@@ -269,7 +277,13 @@
 
         function actualizarTodo(save = false) {
             const act = db.actual;
-            document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `<span class="chip">${j}</span>`).join('');
+            document.getElementById('listaJugadores').innerHTML = act.jugadores.map(j => `
+                <span class="chip">
+                    ${j}
+                    ${currentUser === 'Fer' ? `<button class="btn-quitar-jugador" onclick="quitarJugador('${j}')">×</button>` : ''}
+                </span>
+            `).join('');
+            
             document.getElementById('selectPersona').innerHTML = act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('');
             
             let tg = 0, tp = 0;
@@ -277,7 +291,7 @@
             hUI.innerHTML = "";
             act.movimientos.forEach(m => {
                 if (m.tipo === 'gasto') tg += m.monto; else tp += m.monto;
-                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
+                hUI.innerHTML += `<li><b>${m.nombre}</b>: ${m.monto.toFixed(2)}€ <span class="tipo-tag">${m.detalle}</span> 
                     ${currentUser === 'Fer' ? `<button class="btn-borrar" style="padding:2px 5px;" onclick="borrarM(${m.id}, ${m.batchId || 0})">X</button>` : ''}</li>`;
             });
 
