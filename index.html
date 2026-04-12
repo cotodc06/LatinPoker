@@ -58,7 +58,7 @@
         </div>
 
         <div class="caja" id="cajaStats">
-            <h2>🏆 LEADERBOARD</h2>
+            <h2>🏆 RANKING</h2>
             <table class="tabla-rank">
                 <thead>
                     <tr>
@@ -239,7 +239,6 @@
         }
 
         function borrarM(id) {
-            // Cambio clave: eliminación estrictamente individual (ignora batchId)
             db.actual.movimientos = db.actual.movimientos.filter(m => m.id !== id);
             actualizarTodo(true);
         }
@@ -311,7 +310,7 @@
                 }
             });
 
-            // Eliminado el filtro .filter(s => i < 3) para mostrar a todos
+            // Ordenar y mostrar todos los que tengan actividad registrada
             const sorted = Object.entries(stats).filter(s => s[1].dinero > 0 || s[1].rondas > 0).sort((a,b) => b[1][currentSort] - a[1][currentSort]);
             const body = document.getElementById('bodyRanking');
             body.innerHTML = sorted.map(([nombre, val], i) => {
