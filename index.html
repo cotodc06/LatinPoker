@@ -47,7 +47,7 @@
     <div id="mainApp" class="hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <strong id="welcomeMsg"></strong>
-            <button onclick="sincronizar()" style="background: #95a5a6; padding: 8px 12px; font-size: 0.75em;">☁️ Sincronizar</button>
+            <button onclick="sincronizar()" id="btnSync" style="background: #95a5a6; padding: 8px 12px; font-size: 0.75em;">☁️ Sincronizar</button>
         </div>
 
         <div class="caja">
@@ -118,6 +118,8 @@
                 document.getElementById('mainApp').classList.remove('hidden');
                 document.getElementById('welcomeMsg').innerText = "Jugador: " + user;
                 if (user === 'Fer') document.getElementById('adminTools').classList.remove('hidden');
+                
+                // Al loguear, primero intentamos leer de la nube
                 await inicializarCloud();
             } else { alert("Clave incorrecta"); }
         }
@@ -125,6 +127,7 @@
         async function inicializarCloud() {
             let binId = localStorage.getItem(BIN_ID_KEY);
             if (!binId) {
+                // Si no hay BIN en este navegador, intentamos buscar uno existente o creamos uno nuevo
                 const res = await fetch("https://api.jsonbin.io/v3/b", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': false },
@@ -138,14 +141,23 @@
         }
 
         async function sincronizar() {
+            const btn = document.getElementById('btnSync');
+            btn.innerText = "⌛...";
             document.body.classList.add('loading');
             try {
                 const binId = localStorage.getItem(BIN_ID_KEY);
-                const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': MASTER_KEY } });
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { 
+                    headers: { 'X-Master-Key': MASTER_KEY },
+                    cache: 'no-store' // Forzamos a no usar caché del navegador
+                });
                 const data = await res.json();
                 db = data.record;
                 actualizarTodo(false);
-            } catch (e) { console.error("Error sincronizando"); }
+            } catch (e) { 
+                console.error("Error sincronizando");
+                alert("Error de conexión con la nube");
+            }
+            btn.innerText = "☁️ Sincronizar";
             document.body.classList.remove('loading');
         }
 
@@ -185,7 +197,7 @@
             }
             document.getElementById('monto').value = ""; 
             document.getElementById('descGasto').value = "";
-            actualizarTodo(true);
+            await actualizarTodo(true); // Sube automáticamente
         }
 
         async function crearRonda() {
@@ -195,7 +207,7 @@
             if (isNaN(m) || m <= 0 || (a + m > p + 0.01)) return alert("Saldo insuficiente en el pozo");
             db.actual.rondas.push({ id: Date.now(), montoTotal: m, ganadores: [] });
             document.getElementById('inputMontoRonda').value = "";
-            actualizarTodo(true);
+            await actualizarTodo(true); // Sube automáticamente
         }
 
         async function asignarGanador(rid) {
@@ -204,28 +216,28 @@
             const s = r.ganadores.reduce((x, g) => x + g.p, 0);
             if (isNaN(p) || (s + p > 100)) return alert("Excede 100%");
             r.ganadores.push({ nombre: document.getElementById(`sel-${rid}`).value, p: p, euros: (r.montoTotal * p / 100) });
-            actualizarTodo(true);
+            await actualizarTodo(true); // Sube automáticamente
         }
 
         async function borrarM(id, b) {
             db.actual.movimientos = b ? db.actual.movimientos.filter(m => m.batchId !== b) : db.actual.movimientos.filter(m => m.id !== id);
-            actualizarTodo(true);
+            await actualizarTodo(true);
         }
 
         async function borrarRonda(id) {
             db.actual.rondas = db.actual.rondas.filter(r => r.id !== id);
-            actualizarTodo(true);
+            await actualizarTodo(true);
         }
 
         async function cerrarPartida() {
-            if (!confirm("¿Cerrar definitivamente? Se borrará lo actual y se guardará en el historial.")) return;
+            if (!confirm("¿Cerrar definitivamente? Se archivará la noche.")) return;
             const fecha = new Date().toLocaleString();
             db.historial.push({ fecha, datos: JSON.parse(JSON.stringify(db.actual)) });
             db.actual.movimientos = [];
             db.actual.rondas = [];
             document.getElementById('resultadoFinal').innerHTML = "";
             document.getElementById('btnCerrarPartida').style.display = "none";
-            actualizarTodo(true);
+            await actualizarTodo(true);
         }
 
         function actualizarTodo(save = false) {
@@ -251,12 +263,12 @@
                 <div class="ronda-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <strong>RONDA ${index + 1}: ${r.montoTotal.toFixed(2)}€</strong>
-                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Eliminar</button>` : ''}
+                        ${currentUser === 'Fer' ? `<button class="btn-borrar" onclick="borrarRonda(${r.id})">Borrar</button>` : ''}
                     </div>
                     <div class="flex-row">
                         <select id="sel-${r.id}">${act.jugadores.map(j => `<option value="${j}">${j}</option>`).join('')}</select>
                         <input type="number" id="porc-${r.id}" placeholder="%" style="width: 55px;">
-                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary); padding:10px;">OK</button>
+                        <button onclick="asignarGanador(${r.id})" style="background:var(--secondary);">OK</button>
                     </div>
                     <ul style="padding:0; list-style:none; font-size:0.9em; margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
                         ${r.ganadores.map(g => `<li>• ${g.nombre}: <b>${g.euros.toFixed(2)}€</b> (${g.p}%)</li>`).join('')}
@@ -264,7 +276,7 @@
                 </div>`).join('');
 
             document.getElementById('listaCerradas').innerHTML = db.historial.slice().reverse().map(h => `
-                <div class="historial-item">📅 ${h.fecha} <br> Pozo Total: ${h.datos.movimientos.filter(x=>x.tipo==='apuesta').reduce((s,x)=>s+x.monto,0).toFixed(2)}€</div>
+                <div class="historial-item">📅 ${h.fecha} | Pozo: ${h.datos.movimientos.filter(x=>x.tipo==='apuesta').reduce((s,x)=>s+x.monto,0).toFixed(2)}€</div>
             `).join('');
 
             if (save) pushCloud();
@@ -273,31 +285,30 @@
         function ejecutarLiquidacion() {
             const act = db.actual;
             const tg = act.movimientos.filter(m => m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
-            const c = tg / act.jugadores.length;
+            const c = tg / (act.jugadores.length || 1);
             const res = document.getElementById('resultadoFinal');
-            res.innerHTML = `<hr><h3>Liquidación de Gastos</h3><p>Gasto por persona: ${c.toFixed(2)}€</p><hr>`;
+            res.innerHTML = `<hr><h3>Liquidación</h3><p>Gasto p/p: ${c.toFixed(2)}€</p><hr>`;
             
             let deudores = [], acreedores = [];
             act.jugadores.forEach(j => {
                 const pg = act.movimientos.filter(m => m.nombre === j && m.tipo === 'gasto').reduce((s, m) => s + m.monto, 0);
                 let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
                 const bal = pg - c;
-                res.innerHTML += `<p>${j}: 💰 Premo <b>+${g.toFixed(2)}€</b> | 🍽️ Gasto ${bal >= 0 ? '<b style="color:green">+' : '<b style="color:red">'}${bal.toFixed(2)}€</b></p>`;
+                res.innerHTML += `<p>${j}: 💰+${g.toFixed(2)}€ | 🍽️ ${bal >= 0 ? '+' : ''}${bal.toFixed(2)}€</p>`;
                 if (bal < -0.01) deudores.push({n: j, m: Math.abs(bal)});
                 else if (bal > 0.01) acreedores.push({n: j, m: bal});
             });
 
-            res.innerHTML += "<hr><h4>1. Retiros del Pozo Físico:</h4>";
+            res.innerHTML += "<hr><h4>1. Cobros del Pozo:</h4>";
             act.jugadores.forEach(j => {
                 let g = 0; act.rondas.forEach(r => { r.ganadores.filter(x => x.nombre === j).forEach(x => g += x.euros); });
-                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b> del pozo.</p>`;
+                if (g > 0.01) res.innerHTML += `<p>🏆 <b>${j}</b> retira <b>${g.toFixed(2)}€</b>.</p>`;
             });
 
-            res.innerHTML += "<hr><h4>2. Transferencias de Gastos:</h4>";
+            res.innerHTML += "<hr><h4>2. Transferencias:</h4>";
             let i = 0, k = 0;
             let d_copy = deudores.map(x => ({...x}));
             let a_copy = acreedores.map(x => ({...x}));
-
             while(i < d_copy.length && k < a_copy.length) {
                 let m = Math.min(d_copy[i].m, a_copy[k].m);
                 res.innerHTML += `<p>💸 <b>${d_copy[i].n}</b> paga <b>${m.toFixed(2)}€</b> a <b>${a_copy[k].n}</b></p>`;
